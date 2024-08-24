@@ -9,10 +9,6 @@ module Coelacanth
 
     def read(key)
       @yaml ||= YAML.unsafe_load(ERB.new(File.read(file)).result)[env]
-      p @yaml
-      p File.read(file)
-      p file
-      p env
       @yaml[key]
     end
 
@@ -31,15 +27,9 @@ module Coelacanth
     def env
       return ::Rails.env if defined?(::Rails)
 
-      rails_env || rack_env || "development"
-    end
-
-    def rails_env
-      ENV.key?("RAILS_ENV") && !ENV["RAILS_ENV"].empty? && ENV["RAILS_ENV"]
-    end
-
-    def rack_env
-      ENV.key?("RACK_ENV") && !ENV["RACK_ENV"].empty? && ENV["RACK_ENV"]
+      env_value = ENV["RAILS_ENV"].to_s.strip
+      env_value = ENV["RACK_ENV"].to_s.strip if env_value.empty?
+      env_value.empty? ? "development" : env_value
     end
   end
 end

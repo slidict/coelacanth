@@ -9,6 +9,10 @@ module Coelacanth
 
     def read(key)
       @yaml ||= YAML.unsafe_load(ERB.new(File.read(file)).result)[env]
+      p @yaml
+      p File.read(file)
+      p file
+      p env
       @yaml[key]
     end
 

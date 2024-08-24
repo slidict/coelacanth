@@ -2,7 +2,7 @@
 
 RSpec.describe Coelacanth::Configure do
   let(:config) { described_class.new }
-  let(:config_path) { Pathname.new(config.send(:root).join("config/coelacanth.yml")) }
+  let(:config_path) { config.send(:root).join("config/coelacanth.yml") }
   let(:yaml_content) { { "test" => { "some_key" => "some_value" } }.to_yaml }
 
   shared_context "with common stubs" do

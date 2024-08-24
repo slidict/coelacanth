@@ -1,39 +1,54 @@
-# Coelacanth
+# coelacanth
 
-TODO: Delete this and the text below, and describe your gem
+[![Gem Version](https://badge.fury.io/rb/coelacanth.svg)](https://badge.fury.io/rb/coelacanth)
+[![Build Status](https://github.com/slidict/coelacanth/actions/workflows/test.yml/badge.svg)](https://github.com/slidict/coelacanth/actions)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
+[![Maintainability](https://api.codeclimate.com/v1/badges/123abc456def/maintainability)](https://codeclimate.com/github/slidict/coelacanth/maintainability)
 
-Welcome to your new gem! In this directory, you'll find the files you need to be able to package up your Ruby library into a gem. Put your Ruby code in the file `lib/coelacanth`. To experiment with that code, run `bin/console` for an interactive prompt.
+`coelacanth` is a gem that allows you to parse and analyze web pages, extracting key statistics and information for further use within your projects.
 
 ## Installation
 
-TODO: Replace `UPDATE_WITH_YOUR_GEM_NAME_IMMEDIATELY_AFTER_RELEASE_TO_RUBYGEMS_ORG` with your gem name right after releasing it to RubyGems.org. Please do not do it earlier due to security reasons. Alternatively, replace this section with instructions to install your gem from git if you don't plan to release to RubyGems.org.
+Add this line to your application's Gemfile:
 
-Install the gem and add to the application's Gemfile by executing:
+```ruby
+gem 'coelacanth'
+```
 
-    $ bundle add UPDATE_WITH_YOUR_GEM_NAME_IMMEDIATELY_AFTER_RELEASE_TO_RUBYGEMS_ORG
+And then execute:
 
-If bundler is not being used to manage dependencies, install the gem by executing:
+```bash
+$ bundle install
+```
 
-    $ gem install UPDATE_WITH_YOUR_GEM_NAME_IMMEDIATELY_AFTER_RELEASE_TO_RUBYGEMS_ORG
+Or install it yourself as:
+
+```bash
+$ gem install coelacanth
+```
 
 ## Usage
+To use coelacanth, first require it.
 
-TODO: Write usage instructions here
+```ruby
+require 'coelacanth'
+```
 
-## Development
+Then, you can easily parse and extract information from a web page like this:
 
-After checking out the repo, run `bin/setup` to install dependencies. Then, run `rake spec` to run the tests. You can also run `bin/console` for an interactive prompt that will allow you to experiment.
+```ruby
+url = "https://example.com"
+stats = Coelacanth.analyze(url)
+```
 
-To install this gem onto your local machine, run `bundle exec rake install`. To release a new version, update the version number in `version.rb`, and then run `bundle exec rake release`, which will create a git tag for the version, push git commits and the created tag, and push the `.gem` file to [rubygems.org](https://rubygems.org).
+## Features
+- More features coming soon!
 
 ## Contributing
-
-Bug reports and pull requests are welcome on GitHub at https://github.com/[USERNAME]/coelacanth. This project is intended to be a safe, welcoming space for collaboration, and contributors are expected to adhere to the [code of conduct](https://github.com/[USERNAME]/coelacanth/blob/master/CODE_OF_CONDUCT.md).
+Bug reports and pull requests are welcome on GitHub at https://github.com/slidict/coelacanth. This project is intended to be a safe, welcoming space for collaboration, and contributors are expected to adhere to the Contributor Covenant code of conduct.
 
 ## License
+The gem is available as open-source under the terms of the MIT License.
 
-The gem is available as open source under the terms of the [MIT License](https://opensource.org/licenses/MIT).
-
-## Code of Conduct
-
-Everyone interacting in the Coelacanth project's codebases, issue trackers, chat rooms and mailing lists is expected to follow the [code of conduct](https://github.com/[USERNAME]/coelacanth/blob/master/CODE_OF_CONDUCT.md).
+## Acknowledgments
+Special thanks to all the contributors and open-source projects that make this possible.

@@ -8,7 +8,6 @@ RSpec.describe Coelacanth::Configure do
   shared_context "with common stubs" do
     before do
       allow(File).to receive(:read).with(config_path).and_return(yaml_content)
-      allow(ERB).to receive(:new).and_return(double(result: yaml_content))
     end
   end
 

@@ -8,7 +8,7 @@ module Coelacanth
     CONFIG_PATH = "config/coelacanth.yml"
 
     def read(key)
-      @yaml ||= YAML.unsafe_load(ERB.new(file).result)[env]
+      @yaml ||= YAML.unsafe_load(ERB.new(File.read(file)).result)[env]
       @yaml[key]
     end
 
@@ -21,7 +21,7 @@ module Coelacanth
     end
 
     def file
-      File.read(root.join(CONFIG_PATH))
+      root.join(CONFIG_PATH)
     end
 
     def env

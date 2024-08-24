@@ -32,7 +32,8 @@ RSpec.describe Coelacanth::Configure do
     context "when Rails is not defined" do
       before do
         hide_const("Rails")
-        allow(ENV).to receive(:[]).with("RAILS_ENV").and_return("test")
+        allow(ENV).to receive(:[]).and_call_original
+        allow(ENV).to receive(:[]).with("RACK_ENV").and_return("test")
       end
       include_context "with common stubs"
 

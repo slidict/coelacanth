@@ -1,0 +1,6 @@
+development: &development
+  use_chrome_remote: false
+test:
+  <<: *development
+production:
+  <<: *development

@@ -14,3 +14,5 @@ jobs:
       # https://github.com/marketplace/actions/changelog-ci
       - name: Run Changelog CI
         uses: saadmk11/changelog-ci@v1.1.2
+        with:
+          config_file: changelog-ci-config.yaml

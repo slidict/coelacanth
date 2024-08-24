@@ -1,0 +1,23 @@
+networks:
+  app-tier:
+    driver: bridge
+services:
+  app:
+    environment:
+      - UID=${UID}
+    tty: true
+    stdin_open: true
+    build:
+      context: .
+      dockerfile: Dockerfile
+    volumes:
+      - ./:/app:cached
+    working_dir: /app
+    command: bash
+    networks:
+      - app-tier
+  chrome:
+    image: browserless/chrome:latest
+    container_name: chrome
+    networks:
+      - app-tier

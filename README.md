@@ -11,6 +11,7 @@
 
 Add this line to your application's Gemfile:
 
+
 ```ruby
 gem 'coelacanth'
 ```
@@ -26,6 +27,18 @@ Or install it yourself as:
 ```bash
 $ gem install coelacanth
 ```
+
+### Resolving UID Mismatch Between Docker and Host
+
+To resolve issues related to the difference between Docker's UID and the host's UID, add the following line to your .bashrc or similar shell configuration file:
+
+```bash
+export UID=${UID}
+```
+
+This will ensure that the environment variable UID is correctly set in your Docker containers, matching your host system's user ID.
+
+This explanation provides clear instructions on how to resolve the UID mismatch issue using the export command.
 
 ## Usage
 To use coelacanth, first require it.

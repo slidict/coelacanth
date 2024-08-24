@@ -1,4 +1,5 @@
 # frozen_string_literal: true
+require "ferrum"
 
 module Coelacanth
   # Coelacanth::Client
@@ -25,13 +26,9 @@ module Coelacanth
     end
 
     def get_response(url)
-      if Configure.new.read("use_chrome_remote")
-        @chrome_client.send_cmd "Network.enable"
-        @chrome_client.send_cmd("Page.navigate", url:)
-        @chrome_client.wait_for "Page.loadEventFired"
-        request_id = @chrome_client.network_events["Network.requestWillBeSent"].last["requestId"]
-        response = @chrome_client.send_cmd("Network.getResponseBody", requestId: request_id)
-        response["body"]
+      if Configure.new.read("use_remote_client")
+        remote_client.goto(url)
+        remote_client.body
       else
         Net::HTTP.get_response(URI.parse(url))
       end
@@ -39,8 +36,11 @@ module Coelacanth
 
     private
 
-    def chrome_client
-      @chrome_client ||= ChromeRemote.client
+    def remote_client
+      @remote_client ||= Ferrum::Browser.new(
+        ws_url: "ws://chrome:3000/chrome",
+        timeout: 20
+      ).create_page
     end
   end
 end

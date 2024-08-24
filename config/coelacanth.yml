@@ -1,5 +1,5 @@
 development: &development
-  use_chrome_remote: false
+  use_remote_client: false
 test:
   <<: *development
 production:

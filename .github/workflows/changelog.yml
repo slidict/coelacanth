@@ -1,0 +1,16 @@
+name: Changelog CI
+
+on:
+  pull_request:
+    types: [ opened ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+
+      # https://github.com/marketplace/actions/changelog-ci
+      - name: Run Changelog CI
+        uses: saadmk11/changelog-ci@v1.1.2

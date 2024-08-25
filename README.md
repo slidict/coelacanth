@@ -1,9 +1,8 @@
 # coelacanth
 
 [![Gem Version](https://badge.fury.io/rb/coelacanth.svg)](https://badge.fury.io/rb/coelacanth)
-[![Build Status](https://github.com/slidict/coelacanth/actions/workflows/test.yml/badge.svg)](https://github.com/slidict/coelacanth/actions)
+[![Build Status](https://github.com/slidict/coelacanth/actions/workflows/main.yml/badge.svg)](https://github.com/slidict/coelacanth/actions)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
-[![Maintainability](https://api.codeclimate.com/v1/badges/123abc456def/maintainability)](https://codeclimate.com/github/slidict/coelacanth/maintainability)
 
 `coelacanth` is a gem that allows you to parse and analyze web pages, extracting key statistics and information for further use within your projects.
 
@@ -56,6 +55,21 @@ stats = Coelacanth.analyze(url) # Not yet implement
 
 ## Features
 - More features coming soon!
+
+## Commit Message Guidelines
+
+To ensure consistency and facilitate automatic updates to the `CHANGELOG.md`, please follow the [Conventional Commits](https://www.conventionalcommits.org/) specification when creating commit messages. This helps maintain a clear and structured commit history.
+
+When submitting a Pull Request (PR), make sure your commits adhere to these guidelines.
+
+### Example of Conventional Commit Messages:
+
+- `feat: add new parsing feature`
+- `fix: resolve issue with URL parsing`
+- `chore: update dependencies`
+- `docs: add guidelines for contributing`
+
+By following these guidelines, you help ensure that our project's commit history is easy to navigate and that versioning and release notes are generated correctly.
 
 ## Contributing
 Bug reports and pull requests are welcome on GitHub at https://github.com/slidict/coelacanth. This project is intended to be a safe, welcoming space for collaboration, and contributors are expected to adhere to the Contributor Covenant code of conduct.

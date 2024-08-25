@@ -1,9 +1,14 @@
 # frozen_string_literal: true
+
 require "ferrum"
 
 module Coelacanth
   # Coelacanth::Client
   class Client
+    def initialize
+      @config = Configure.new
+    end
+
     def valid_url?(url)
       uri = URI.parse(url)
       uri.is_a?(URI::HTTP) || uri.is_a?(URI::HTTPS)
@@ -26,7 +31,7 @@ module Coelacanth
     end
 
     def get_response(url)
-      if Configure.new.read("use_remote_client")
+      if @config.read("use_remote_client")
         remote_client.goto(url)
         remote_client.body
       else
@@ -38,8 +43,8 @@ module Coelacanth
 
     def remote_client
       @remote_client ||= Ferrum::Browser.new(
-        ws_url: "ws://chrome:3000/chrome",
-        timeout: 20
+        ws_url: @config.read("remote_client.ws_url"),
+        timeout: @config.read("remote_client.timeout")
       ).create_page
     end
   end

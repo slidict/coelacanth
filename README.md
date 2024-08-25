@@ -51,7 +51,7 @@ Then, you can easily parse and extract information from a web page like this:
 
 ```ruby
 url = "https://example.com"
-stats = Coelacanth.analyze(url)
+stats = Coelacanth.analyze(url) # Not yet implement
 ```
 
 ## Features

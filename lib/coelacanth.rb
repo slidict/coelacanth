@@ -11,7 +11,8 @@ module Coelacanth
   class RedirectError < StandardError; end
   class DeepRedirectError < StandardError; end
 
-  def self.analyze(_url)
+  def self.analyze(url)
+    Client.get_response(url)
     {
       todo: "implement me"
     }

@@ -1,4 +1,5 @@
 # frozen_string_literal: true
+
 require "yaml"
 require "erb"
 
@@ -8,8 +9,13 @@ module Coelacanth
     CONFIG_PATH = "config/coelacanth.yml"
 
     def read(key)
+      return yaml[key] unless key.include?(".")
+
+      key.split(".").reduce(yaml) { |hash, k| hash[k] }
+    end
+
+    def yaml
       @yaml ||= YAML.unsafe_load(ERB.new(File.read(file)).result)[env]
-      @yaml[key]
     end
 
     private

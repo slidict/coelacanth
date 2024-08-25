@@ -4,7 +4,6 @@ RSpec.describe Coelacanth::Client do
   subject { described_class.new }
 
   describe ".valid_url?" do
-
     it "with valid (http)" do
       expect(subject.valid_url?("http://example.com")).to be true
       expect(subject.valid_url?("example.com")).to be false
@@ -24,8 +23,8 @@ RSpec.describe Coelacanth::Client do
   end
 
   describe ".resolve_redirect" do
-    let(:url) { URI.parse("http://example.com") }
-    let(:redirect_url) { URI.parse("http://example.com/redirect") }
+    let(:url) {"http://example.com" }
+    let(:redirect_url) { "http://example.com/redirect" }
 
     it "with no redirect" do
       allow(Net::HTTP).to receive(:get_response).with(url).and_return(Net::HTTPSuccess.new(nil, "200", "OK"))
@@ -52,29 +51,31 @@ RSpec.describe Coelacanth::Client do
     end
 
     it "with invalid redirect" do
-      allow(Net::HTTP).to receive(:get_response).with(url).and_return(Net::HTTPUnknownResponse.new(nil, "500", "Internal Server Error"))
+      allow(Net::HTTP).to receive(:get_response).with(url)
+                                                .and_return(Net::HTTPUnknownResponse.new(nil, "500",
+                                                                                         "Internal Server Error"))
 
       expect { subject.resolve_redirect(url) }.to raise_error(Coelacanth::RedirectError)
     end
   end
 
-  describe '#remote_client' do
-    it 'creates a new Ferrum::Browser instance' do
+  describe "#remote_client" do
+    it "creates a new Ferrum::Browser instance" do
       browser_double = instance_double(Ferrum::Browser)
-      page_double = double('page')
+      page_double = double("page")
       allow(Ferrum::Browser).to receive(:new).and_return(browser_double)
       allow(browser_double).to receive(:create_page).and_return(page_double)
 
       remote_client = subject.send(:remote_client)
 
-      expect(Ferrum::Browser).to have_received(:new).with(ws_url: "ws://chrome:3000/chrome", timeout: 20)
+      expect(Ferrum::Browser).to have_received(:new).with(ws_url: "ws://chrome:3000/chrome", timeout: 10)
       expect(browser_double).to have_received(:create_page)
       expect(remote_client).to eq(page_double)
     end
 
-    it 'caches the @remote_client instance' do
+    it "caches the @remote_client instance" do
       browser_double = instance_double(Ferrum::Browser)
-      page_double = double('page')
+      page_double = double("page")
       allow(Ferrum::Browser).to receive(:new).and_return(browser_double)
       allow(browser_double).to receive(:create_page).and_return(page_double)
 

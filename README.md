@@ -1,9 +1,8 @@
 # coelacanth
 
 [![Gem Version](https://badge.fury.io/rb/coelacanth.svg)](https://badge.fury.io/rb/coelacanth)
-[![Build Status](https://github.com/slidict/coelacanth/actions/workflows/test.yml/badge.svg)](https://github.com/slidict/coelacanth/actions)
+[![Build Status](https://github.com/slidict/coelacanth/actions/workflows/main.yml/badge.svg)](https://github.com/slidict/coelacanth/actions)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
-[![Maintainability](https://api.codeclimate.com/v1/badges/123abc456def/maintainability)](https://codeclimate.com/github/slidict/coelacanth/maintainability)
 
 `coelacanth` is a gem that allows you to parse and analyze web pages, extracting key statistics and information for further use within your projects.
 

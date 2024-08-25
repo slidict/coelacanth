@@ -23,7 +23,7 @@ module Coelacanth
       response = get_response(url)
 
       case response
-      when Net::HTTPSuccess then URI.parse(url)
+      when Net::HTTPSuccess then url
       when Net::HTTPRedirection then resolve_redirect(response["location"], limit - 1)
       else
         raise Coelacanth::RedirectError
@@ -35,7 +35,7 @@ module Coelacanth
         remote_client.goto(url)
         remote_client.body
       else
-        Net::HTTP.get_response(URI.parse(url))
+        Net::HTTP.get_response(url)
       end
     end
 

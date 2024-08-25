@@ -23,8 +23,8 @@ RSpec.describe Coelacanth::Client do
   end
 
   describe ".resolve_redirect" do
-    let(:url) { URI.parse("http://example.com") }
-    let(:redirect_url) { URI.parse("http://example.com/redirect") }
+    let(:url) {"http://example.com" }
+    let(:redirect_url) { "http://example.com/redirect" }
 
     it "with no redirect" do
       allow(Net::HTTP).to receive(:get_response).with(url).and_return(Net::HTTPSuccess.new(nil, "200", "OK"))

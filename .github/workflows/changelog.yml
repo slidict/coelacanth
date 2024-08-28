@@ -17,6 +17,7 @@ jobs:
         id: changelog
         uses: requarks/changelog-action@v1
         with:
+          allowUpdates: true
           token: ${{ github.token }}
           tag: ${{ github.ref_name }}
 

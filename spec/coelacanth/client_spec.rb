@@ -60,31 +60,12 @@ RSpec.describe Coelacanth::Client do
   end
 
   describe "#remote_client" do
-    it "creates a new Ferrum::Browser instance" do
-      browser_double = instance_double(Ferrum::Browser)
-      page_double = double("page")
-      allow(Ferrum::Browser).to receive(:new).and_return(browser_double)
-      allow(browser_double).to receive(:create_page).and_return(page_double)
-
-      remote_client = subject.send(:remote_client)
-
-      expect(Ferrum::Browser).to have_received(:new).with(ws_url: "ws://chrome:3000/chrome", timeout: 10)
-      expect(browser_double).to have_received(:create_page)
-      expect(remote_client).to eq(page_double)
-    end
-
-    it "caches the @remote_client instance" do
-      browser_double = instance_double(Ferrum::Browser)
-      page_double = double("page")
-      allow(Ferrum::Browser).to receive(:new).and_return(browser_double)
-      allow(browser_double).to receive(:create_page).and_return(page_double)
-
-      first_call = subject.send(:remote_client)
-      second_call = subject.send(:remote_client)
-
-      expect(first_call).to eq(second_call)
-      expect(Ferrum::Browser).to have_received(:new).once
-      expect(browser_double).to have_received(:create_page).once
+    context "when headers are provided" do
+      it_behaves_like "a remote client", {
+        headers: { "Authorization" => "Bearer 1234567890", "User-Agent" => "Coelacanth Chrome Extension" },
+        ws_url: "ws://chrome:3000/chrome",
+        timeout: 10
+      }
     end
   end
 end

@@ -3,6 +3,9 @@ development: &development
   remote_client:
     ws_url: "ws://chrome:3000/chrome"
     timeout: 10 # seconds
+    headers:
+      Authorization: "Bearer 1234567890"
+      User-Agent: "Coelacanth Chrome Extension"
 test:
   <<: *development
 production:

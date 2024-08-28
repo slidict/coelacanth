@@ -47,5 +47,14 @@ module Coelacanth
         timeout: @config.read("remote_client.timeout")
       ).create_page
     end
+
+    def browser
+      @browser ||= Ferrum::Browser.new(
+        ws_url: @config.read("remote_client.ws_url"),
+        timeout: @config.read("remote_client.timeout")
+      )
+      headers = @config.read("remote_client.headers")
+      browser.headers.set("User-Agent" => headers) unless headers.nil?
+    en
   end
 end

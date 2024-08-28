@@ -64,10 +64,16 @@ When submitting a Pull Request (PR), make sure your commits adhere to these guid
 
 ### Example of Conventional Commit Messages:
 
-- `feat: add new parsing feature`
-- `fix: resolve issue with URL parsing`
+- `feat: add new feature for parsing web pages`
+- `fix: resolve issue with URL redirection`
+- `docs: update README with usage instructions`
 - `chore: update dependencies`
-- `docs: add guidelines for contributing`
+- `build: update build configuration`
+- `ci: update CI pipeline`
+- `style: fix code style issues`
+- `refactor: refactor code for better readability`
+- `perf: improve performance of data processing`
+- `test: add new tests for URL parsing module`
 
 By following these guidelines, you help ensure that our project's commit history is easy to navigate and that versioning and release notes are generated correctly.
 

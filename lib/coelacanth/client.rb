@@ -42,10 +42,15 @@ module Coelacanth
     private
 
     def remote_client
-      @remote_client ||= Ferrum::Browser.new(
-        ws_url: @config.read("remote_client.ws_url"),
-        timeout: @config.read("remote_client.timeout")
-      ).create_page
+      if @remote_client.nil?
+        headers = @config.read("remote_client.headers")
+        @remote_client = Ferrum::Browser.new(
+          ws_url: @config.read("remote_client.ws_url"),
+          timeout: @config.read("remote_client.timeout")
+        ).create_page
+        @remote_client.headers.set(headers) unless headers.empty?
+      end
+      @remote_client
     end
   end
 end

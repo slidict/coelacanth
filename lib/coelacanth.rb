@@ -12,9 +12,15 @@ module Coelacanth
   class DeepRedirectError < StandardError; end
 
   def self.analyze(url)
-    Client.get_response(url)
+    @client = Client.new(url)
+    @client.resolve_redirect
     {
-      todo: "implement me"
+      remote_client: @config.read("use_remote_client"),
+      oga: @client.oga
     }
+  end
+
+  def self.config
+    @config ||= Configure.new
   end
 end

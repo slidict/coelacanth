@@ -1,7 +1,7 @@
 PATH
   remote: .
   specs:
-    coelacanth (0.1.4)
+    coelacanth (0.1.5)
 
 GEM
   remote: https://rubygems.org/
@@ -81,4 +81,4 @@ DEPENDENCIES
   rubocop (~> 1.21)
 
 BUNDLED WITH
-   2.5.14
+   2.5.7

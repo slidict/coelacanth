@@ -24,8 +24,8 @@ module Coelacanth
       raise Coelacanth::DeepRedirectError, "Too many redirect" if limit.zero?
       raise Coelacanth::RedirectError, "Url or location is nil" if @url.nil?
 
-      response = get_response(@url)
-      handle_response(response, limit)
+      get_response(@url)
+      handle_response(@origin_response, limit)
     end
 
     def oga(url = nil)
@@ -50,9 +50,9 @@ module Coelacanth
       when /^#{codes[Net::HTTPSuccess]}\d\d$/
         @url
       when /^#{codes[Net::HTTPRedirection]}\d\d$/
+        @url = response["location"]
         resolve_redirect(response["location"], limit - 1)
       else
-        binding.irb
         raise Coelacanth::RedirectError
       end
     end

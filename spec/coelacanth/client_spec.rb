@@ -23,39 +23,43 @@ RSpec.describe Coelacanth::Client do
   end
 
   describe ".resolve_redirect" do
-    let(:url) {"http://example.com" }
+    let(:url) { "http://example.com" }
     let(:redirect_url) { "http://example.com/redirect" }
 
     it "with no redirect" do
-      allow(Net::HTTP).to receive(:get_response).with(url).and_return(Net::HTTPSuccess.new(nil, "200", "OK"))
+      response = instance_double(Net::HTTPRedirection, code: "200", body: "<html>Success</html>")
+      allow(Net::HTTP).to receive(:get_response).with(URI.parse(url)).and_return(response)
 
       expect(subject.resolve_redirect(url)).to eq(url)
     end
 
-    it "with redirect" do
-      response = Net::HTTPRedirection.new("1.1", "302", "Found")
-      allow(response).to receive(:[]).with("location").and_return(redirect_url.to_s)
-      allow(Net::HTTP).to receive(:get_response).with(url).and_return(response)
-      allow(Net::HTTP).to receive(:get_response).with(redirect_url).and_return(Net::HTTPSuccess.new(nil, "200", "OK"))
-
-      expect(subject.resolve_redirect(url)).to eq(redirect_url)
-    end
-
     it "with deep redirect" do
-      response = Net::HTTPRedirection.new("1.1", "302", "Found")
+      response = instance_double(Net::HTTPRedirection, code: "302", body: "<html>Redirect</html>")
       allow(response).to receive(:[]).with("location").and_return(redirect_url.to_s)
-      allow(Net::HTTP).to receive(:get_response).with(url).and_return(response)
-      allow(Net::HTTP).to receive(:get_response).with(redirect_url).and_return(response)
+      allow(Net::HTTP).to receive(:get_response).with(URI.parse(url)).and_return(response)
+      allow(Net::HTTP).to receive(:get_response).with(URI.parse(redirect_url)).and_return(response)
 
       expect { subject.resolve_redirect(url) }.to raise_error(Coelacanth::DeepRedirectError)
     end
 
     it "with invalid redirect" do
-      allow(Net::HTTP).to receive(:get_response).with(url)
-                                                .and_return(Net::HTTPUnknownResponse.new(nil, "500",
-                                                                                         "Internal Server Error"))
+      response = instance_double(Net::HTTPRedirection, code: "302", body: "<html>Redirect</html>")
+      allow(response).to receive(:[]).with("location").and_return(nil)
+      allow(Net::HTTP).to receive(:get_response).with(URI.parse(url)).and_return(response)
 
       expect { subject.resolve_redirect(url) }.to raise_error(Coelacanth::RedirectError)
+    end
+
+    it "with redirect" do
+      redirect_response = instance_double(Net::HTTPRedirection, code: "302", body: "<html>Redirect</html>")
+      success_response = instance_double(Net::HTTPSuccess, code: "200", body: "<html>OK</html>")
+      allow(redirect_response).to receive(:[]).with("location").and_return(redirect_url.to_s)
+
+      allow(Net::HTTP).to receive(:get_response).and_return(
+        *([redirect_response] * 9 << success_response)
+      )
+
+      expect(subject.resolve_redirect(url)).to eq(redirect_url)
     end
   end
 

@@ -13,13 +13,35 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v3
 
+      - name: Custom Change log
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          latest_tag=${{ github.ref_name }}
+          latest_release_tag=$(gh release list --exclude-drafts --limit 2 | cut -f1 | tail -n 1)
+          echo "latest_tag=$latest_tag" >> $GITHUB_ENV
+          echo "latest_release_tag=$latest_release_tag" >> $GITHUB_ENV
+
       - name: Update CHANGELOG
         id: changelog
         uses: requarks/changelog-action@v1
         with:
           allowUpdates: true
           token: ${{ github.token }}
-          tag: ${{ github.ref_name }}
+          fromTag: ${{ github.ref_name }}
+          toTag: ${{ env.latest_release_tag }}
+          excludeTypes: ""
+          includeInvalidCommits: true
+
+      - name: Arrange CHANGELOG
+        run: |
+          echo "${{ steps.changelog.outputs.changes }}" > changelog
+          echo "" >> changelog
+          echo "Compare: [${{ env.latest_release_tag }}...${{ env.latest_tag }}](https://github.com/slidict/slidict.io/compare/${{ env.latest_release_tag }}...${{ env.latest_tag }})" >> changelog
+          changelog="$(cat changelog)"
+          echo "changelog<<EOF" >> $GITHUB_ENV
+          echo "$changelog" >> $GITHUB_ENV
+          echo "EOF" >> $GITHUB_ENV
 
       - name: Create Release
         uses: ncipollo/release-action@v1.12.0
@@ -28,5 +50,5 @@ jobs:
           draft: false
           makeLatest: true
           name: ${{ github.ref_name }}
-          body: ${{ steps.changelog.outputs.changes }}
+          body: ${{ env.changelog }}
           token: ${{ github.token }}

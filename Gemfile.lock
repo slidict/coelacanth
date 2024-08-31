@@ -31,7 +31,8 @@ GEM
     rainbow (3.1.1)
     rake (13.1.0)
     regexp_parser (2.9.0)
-    rexml (3.2.6)
+    rexml (3.3.6)
+      strscan
     rspec (3.10.0)
       rspec-core (~> 3.10.0)
       rspec-expectations (~> 3.10.0)
@@ -62,6 +63,7 @@ GEM
       ansi
       ast
     ruby-progressbar (1.13.0)
+    strscan (3.1.0)
     unicode-display_width (2.5.0)
     webrick (1.8.1)
     websocket-driver (0.7.6)

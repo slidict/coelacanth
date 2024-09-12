@@ -24,7 +24,7 @@ RSpec.describe Coelacanth do
     it "returns a hash with remote_client and parsed_dom" do
       result = Coelacanth.analyze(url)
       expect(result).to eq({
-        oga: "parsed_dom"
+        dom: "parsed_dom"
       })
     end
   end

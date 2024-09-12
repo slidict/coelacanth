@@ -13,8 +13,11 @@ RSpec.describe Coelacanth do
     let(:client) { instance_double(Coelacanth::Client) }
     let(:dom) { instance_double(Coelacanth::Dom) }
     let(:config) { instance_double(Coelacanth::Configure) }
+    let(:screenshot) { "screenshot_data" }
 
     before do
+      allow(Coelacanth::Client).to receive(:new).with(url).and_return(client)
+      allow(client).to receive(:get_screenshot).and_return(screenshot)
       allow(Coelacanth).to receive(:config).and_return(config)
       allow(Coelacanth::Client).to receive(:new).with(url).and_return(client)
       allow(Coelacanth::Dom).to receive(:new).and_return(dom)
@@ -24,7 +27,8 @@ RSpec.describe Coelacanth do
     it "returns a hash with remote_client and parsed_dom" do
       result = Coelacanth.analyze(url)
       expect(result).to eq({
-        dom: "parsed_dom"
+        dom: "parsed_dom",
+        screenshot: screenshot
       })
     end
   end

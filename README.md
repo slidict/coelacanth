@@ -54,7 +54,8 @@ stats = Coelacanth.analyze(url)
 ```
 
 ## Features
-- 
+- Get dom by oga
+- Get screenshot
 
 ## Commit Message Guidelines
 

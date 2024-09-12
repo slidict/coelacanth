@@ -5,18 +5,23 @@ require "ferrum"
 module Coelacanth
   # Coelacanth::Client
   class Client
-    def initialize(url = nil)
-      @config = Coelacanth.config
+    def initialize(url)
       @validator = Validator.new
-      @url = url if url && @validator.valid_url?(url)
+      raise URI::InvalidURIError unless @validator.valid_url?(url)
+      @config = Coelacanth.config
+      remote_client.goto(url)
     end
 
     def get_response(url = nil)
-      @url = url if url && @validator.valid_url?(url)
-      remote_client.goto(@url)
       @status_code = remote_client.network.status
       @origin_response = remote_client
       remote_client.body
+    end
+
+    def get_screenshot
+      tempfile = Tempfile.new
+      remote_client.screenshot(path: tempfile.path, format: "png")
+      File.read(tempfile.path)
     end
 
     private

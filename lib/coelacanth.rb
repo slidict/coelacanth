@@ -18,7 +18,8 @@ module Coelacanth
     @client = Client.new(url)
     regular_url = Redirect.new.resolve_redirect(url)
     {
-      dom: Dom.new.oga(regular_url)
+      dom: Dom.new.oga(regular_url),
+      screenshot: @client.get_screenshot,
     }
   end
 

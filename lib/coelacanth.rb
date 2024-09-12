@@ -4,6 +4,7 @@ require "net/http"
 require_relative "coelacanth/configure"
 require_relative "coelacanth/client"
 require_relative "coelacanth/dom"
+require_relative "coelacanth/redirect"
 require_relative "coelacanth/validator"
 require_relative "coelacanth/version"
 
@@ -15,9 +16,9 @@ module Coelacanth
 
   def self.analyze(url)
     @client = Client.new(url)
-    @client.resolve_redirect
+    regular_url = Redirect.new.resolve_redirect(url)
     {
-      oga: Dom.new.oga(url)
+      oga: Dom.new.oga(regular_url)
     }
   end
 

@@ -1,6 +1,5 @@
 # frozen_string_literal: true
 
-require "ferrum"
 require "oga"
 
 module Coelacanth

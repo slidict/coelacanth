@@ -17,14 +17,8 @@ RSpec.describe Coelacanth do
     before do
       allow(Coelacanth).to receive(:config).and_return(config)
       allow(Coelacanth::Client).to receive(:new).with(url).and_return(client)
-      allow(client).to receive(:resolve_redirect)
       allow(Coelacanth::Dom).to receive(:new).and_return(dom)
       allow(dom).to receive(:oga).with(url).and_return("parsed_dom")
-    end
-
-    it "creates a client and resolves redirect" do
-      Coelacanth.analyze(url)
-      expect(client).to have_received(:resolve_redirect)
     end
 
     it "returns a hash with remote_client and parsed_dom" do

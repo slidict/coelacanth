@@ -8,19 +8,12 @@ module Coelacanth
   class Client
     def initialize(url = nil)
       @config = Coelacanth.config
-      @url = url if url && valid_url?(url)
-    end
-
-    def valid_url?(url = nil)
-      @url = url if url
-      uri = URI.parse(@url)
-      uri.is_a?(URI::HTTP) || uri.is_a?(URI::HTTPS)
-    rescue URI::InvalidURIError
-      false
+      @validator = Validator.new
+      @url = url if url && @validator.valid_url?(url)
     end
 
     def resolve_redirect(url = nil, limit = 10)
-      @url = url if url && valid_url?(url)
+      @url = url if url && @validator.valid_url?(url)
       raise Coelacanth::DeepRedirectError, "Too many redirect" if limit.zero?
       raise Coelacanth::RedirectError, "Url or location is nil" if @url.nil?
 
@@ -28,13 +21,8 @@ module Coelacanth
       handle_response(@origin_response, limit)
     end
 
-    def oga(url = nil)
-      @url = url if url && valid_url?(url)
-      Oga.parse_xml(get_response(@url))
-    end
-
     def get_response(url = nil)
-      @url = url if url && valid_url?(url)
+      @url = url if url && @validator.valid_url?(url)
       if @config.read("use_remote_client")
         response_by_remote_client
       else

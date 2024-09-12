@@ -1,5 +1,4 @@
 development: &development
-  use_remote_client: false
   remote_client:
     ws_url: "ws://chrome:3000/chrome"
     timeout: 10 # seconds

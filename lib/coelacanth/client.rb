@@ -17,17 +17,13 @@ module Coelacanth
       raise Coelacanth::DeepRedirectError, "Too many redirect" if limit.zero?
       raise Coelacanth::RedirectError, "Url or location is nil" if @url.nil?
 
-      get_response(@url)
+      response_by_net_http
       handle_response(@origin_response, limit)
     end
 
     def get_response(url = nil)
       @url = url if url && @validator.valid_url?(url)
-      if @config.read("use_remote_client")
-        response_by_remote_client
-      else
-        response_by_net_http
-      end
+      response_by_remote_client
     end
 
     private

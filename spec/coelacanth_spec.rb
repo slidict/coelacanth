@@ -18,7 +18,6 @@ RSpec.describe Coelacanth do
       allow(Coelacanth).to receive(:config).and_return(config)
       allow(Coelacanth::Client).to receive(:new).with(url).and_return(client)
       allow(client).to receive(:resolve_redirect)
-      allow(config).to receive(:read).with("use_remote_client").and_return(true)
       allow(Coelacanth::Dom).to receive(:new).and_return(dom)
       allow(dom).to receive(:oga).with(url).and_return("parsed_dom")
     end
@@ -31,7 +30,6 @@ RSpec.describe Coelacanth do
     it "returns a hash with remote_client and parsed_dom" do
       result = Coelacanth.analyze(url)
       expect(result).to eq({
-        remote_client: false,
         oga: "parsed_dom"
       })
     end

@@ -17,7 +17,6 @@ module Coelacanth
     @client = Client.new(url)
     @client.resolve_redirect
     {
-      remote_client: @config.read("use_remote_client"),
       oga: Dom.new.oga(url)
     }
   end

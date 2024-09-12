@@ -8,7 +8,7 @@ RSpec.describe Coelacanth do
     expect(Coelacanth::VERSION).not_to be nil
   end
 
-  describe ".analyze" do
+  describe "#analyze" do
     let(:url) { "http://example.com" }
     let(:client) { instance_double(Coelacanth::Client) }
     let(:dom) { instance_double(Coelacanth::Dom) }
@@ -29,7 +29,7 @@ RSpec.describe Coelacanth do
     end
   end
 
-  describe ".config" do
+  describe "#config" do
     it "returns a Configure instance" do
       expect(Coelacanth.config).to be_an_instance_of(Coelacanth::Configure)
     end

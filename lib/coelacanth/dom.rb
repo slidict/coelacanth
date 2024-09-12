@@ -6,8 +6,7 @@ module Coelacanth
   # Coelacanth::Dom
   class Dom
     def oga(url)
-      raise URI::InvalidURIError unless Validator.new.valid_url?(url)
-      Oga.parse_xml(get_response(@url))
+      Oga.parse_xml(Client.new(url).get_response)
     end
   end
 end

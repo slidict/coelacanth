@@ -3,7 +3,7 @@
 RSpec.describe Coelacanth::Client do
   subject { described_class.new }
 
-  describe ".resolve_redirect" do
+  describe "#resolve_redirect" do
     let(:url) { "http://example.com" }
     let(:redirect_url) { "http://example.com/redirect" }
 

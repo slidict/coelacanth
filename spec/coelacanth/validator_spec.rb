@@ -3,7 +3,7 @@
 RSpec.describe Coelacanth::Validator do
   subject { described_class.new }
 
-  describe ".valid_url?" do
+  describe "#valid_url?" do
     it "with valid (http)" do
       expect(subject.valid_url?("http://example.com")).to be true
       expect(subject.valid_url?("example.com")).to be false

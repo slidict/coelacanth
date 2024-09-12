@@ -1,9 +1,12 @@
 # frozen_string_literal: true
 
 require "net/http"
-require_relative "coelacanth/version"
 require_relative "coelacanth/configure"
 require_relative "coelacanth/client"
+require_relative "coelacanth/dom"
+require_relative "coelacanth/redirect"
+require_relative "coelacanth/validator"
+require_relative "coelacanth/version"
 
 # Coelacanth
 module Coelacanth
@@ -13,10 +16,10 @@ module Coelacanth
 
   def self.analyze(url)
     @client = Client.new(url)
-    @client.resolve_redirect
+    regular_url = Redirect.new.resolve_redirect(url)
     {
-      remote_client: @config.read("use_remote_client"),
-      oga: @client.oga
+      dom: Dom.new.oga(regular_url),
+      screenshot: @client.get_screenshot,
     }
   end
 

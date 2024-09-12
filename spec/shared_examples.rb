@@ -35,7 +35,7 @@ end
 
 RSpec.shared_examples "a remote client" do |config_values|
   let(:config) { instance_double("Config") }
-  let(:client) { Coelacanth::Client.new }
+  let(:client) { Coelacanth::Client.new('http://example.com') }
   let(:browser) { instance_double("Ferrum::Browser") }
   let(:page) { instance_double("Ferrum::Page") }
   let(:headers) { instance_double("Headers") }
@@ -50,6 +50,7 @@ RSpec.shared_examples "a remote client" do |config_values|
     allow(browser).to receive(:create_page).and_return(page)
     allow(page).to receive(:headers).and_return(headers)
     allow(headers).to receive(:set).with(config_values[:headers])
+    allow(page).to receive(:goto).with('http://example.com')
   end
 
   it "creates a remote client with the correct headers" do

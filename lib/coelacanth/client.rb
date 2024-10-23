@@ -16,14 +16,14 @@ module Coelacanth
       @status_code = remote_client.network.status
       @origin_response = remote_client
       body = remote_client.body
-      page.network.wait_for_idle! # might raise an error
+      remote_client.network.wait_for_idle! # might raise an error
       body
     end
 
     def get_screenshot
       tempfile = Tempfile.new
       remote_client.screenshot(path: tempfile.path, format: "png")
-      page.network.wait_for_idle! # might raise an error
+      remote_client.network.wait_for_idle! # might raise an error
       File.read(tempfile.path)
     end
 

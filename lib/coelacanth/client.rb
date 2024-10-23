@@ -15,12 +15,15 @@ module Coelacanth
     def get_response(url = nil)
       @status_code = remote_client.network.status
       @origin_response = remote_client
-      remote_client.body
+      body = remote_client.body
+      page.network.wait_for_idle! # might raise an error
+      body
     end
 
     def get_screenshot
       tempfile = Tempfile.new
       remote_client.screenshot(path: tempfile.path, format: "png")
+      page.network.wait_for_idle! # might raise an error
       File.read(tempfile.path)
     end
 

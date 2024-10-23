@@ -6,7 +6,7 @@ source "https://rubygems.org"
 gemspec
 
 gem "ferrum", "~> 0.15"
-gem "rake", "~> 13.0"
+gem "rake", "~> 13.2"
 gem "rspec", "~> 3.0"
 gem "rubocop", "~> 1.67"
 gem "oga", "~> 3.4"

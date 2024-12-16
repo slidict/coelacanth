@@ -8,5 +8,5 @@ gemspec
 gem "ferrum", "~> 0.15"
 gem "rake", "~> 13.2"
 gem "rspec", "~> 3.0"
-gem "rubocop", "~> 1.21"
+gem "rubocop", "~> 1.69"
 gem "oga", "~> 3.4"

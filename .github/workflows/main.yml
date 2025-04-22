@@ -20,7 +20,8 @@ jobs:
 
     steps:
     - uses: actions/checkout@v3
-
+    - run: bundle config set frozen false
+    - run: bundle install
     - name: Set up Ruby
       uses: ruby/setup-ruby@v1
       with:

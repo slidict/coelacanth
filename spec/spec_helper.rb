@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require "coelacanth"
-require_relative "./shared_examples"
+require_relative "./lib/shared_examples"
 
 RSpec.configure do |config|
   # Enable flags like --only-failures and --next-failure

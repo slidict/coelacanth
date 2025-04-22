@@ -7,7 +7,7 @@ module Coelacanth::Client
   # Coelacanth::Client
   class ScreenshotOne < Coelacanth::Client::Base
     def get_response
-      @origin_response = URI.open(@url)
+      @origin_response = URI(@url).open
       @status_code = @origin_response.status[0].to_i
       body = @origin_response.read
       body

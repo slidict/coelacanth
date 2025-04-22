@@ -4,11 +4,9 @@ require "ferrum"
 
 module Coelacanth::Client
   # Coelacanth::Client
-  class Ferrum
+  class Ferrum < Coelacanth::Client::Base
     def initialize(url)
-      @validator = Coelacanth::Validator.new
-      raise URI::InvalidURIError unless @validator.valid_url?(url)
-      @config = Coelacanth.config
+      super(url)
       remote_client.goto(url)
     end
 

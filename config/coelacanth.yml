@@ -1,10 +1,13 @@
 development: &development
+  client: "ferrum" # Options: "ferrum", "screenshot_one"
   remote_client:
     ws_url: "ws://chrome:3000/chrome"
     timeout: 10 # seconds
     headers:
       Authorization: "Bearer 1234567890"
       User-Agent: "Coelacanth Chrome Extension"
+  screenshot_one:
+    key: "your_screenshot_one_api_key_here"
 test:
   <<: *development
 production:

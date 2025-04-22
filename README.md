@@ -53,6 +53,12 @@ url = "https://example.com"
 stats = Coelacanth.analyze(url)
 ```
 
+- rspec
+
+```
+$ bundle exec rspec
+```
+
 ## Features
 - Get dom by oga
 - Get screenshot

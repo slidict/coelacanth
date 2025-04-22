@@ -10,16 +10,16 @@ RSpec.describe Coelacanth do
 
   describe "#analyze" do
     let(:url) { "http://example.com" }
-    let(:client) { instance_double(Coelacanth::Client) }
+    let(:client) { instance_double(Coelacanth::Client::Ferrum) }
     let(:dom) { instance_double(Coelacanth::Dom) }
     let(:config) { instance_double(Coelacanth::Configure) }
     let(:screenshot) { "screenshot_data" }
 
     before do
-      allow(Coelacanth::Client).to receive(:new).with(url).and_return(client)
+      allow(Coelacanth::Client::Ferrum).to receive(:new).with(url).and_return(client)
       allow(client).to receive(:get_screenshot).and_return(screenshot)
       allow(Coelacanth).to receive(:config).and_return(config)
-      allow(Coelacanth::Client).to receive(:new).with(url).and_return(client)
+      allow(Coelacanth::Client::Ferrum).to receive(:new).with(url).and_return(client)
       allow(Coelacanth::Dom).to receive(:new).and_return(dom)
       allow(dom).to receive(:oga).with(url).and_return("parsed_dom")
     end

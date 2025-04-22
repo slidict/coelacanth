@@ -35,7 +35,7 @@ end
 
 RSpec.shared_examples "a remote client" do |config_values|
   let(:config) { instance_double("Config") }
-  let(:client) { Coelacanth::Client.new('http://example.com') }
+  let(:client) { Coelacanth::Client::Ferrum.new('http://example.com') }
   let(:browser) { instance_double("Ferrum::Browser") }
   let(:page) { instance_double("Ferrum::Page") }
   let(:headers) { instance_double("Headers") }

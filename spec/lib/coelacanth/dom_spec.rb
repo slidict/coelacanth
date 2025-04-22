@@ -6,11 +6,11 @@ RSpec.describe Coelacanth::Dom do
   describe "#oga" do
     let(:url) { "http://example.com" }
     let(:html_content) { "<html><body><h1>Example</h1></body></html>" }
-    let(:client) { instance_double(Coelacanth::Client) }
+    let(:client) { instance_double(Coelacanth::Client::Ferrum) }
     let(:parsed_dom) { Oga.parse_html(html_content) }
 
     before do
-      allow(Coelacanth::Client).to receive(:new).with(url).and_return(client)
+      allow(Coelacanth::Client::Ferrum).to receive(:new).with(url).and_return(client)
       allow(client).to receive(:get_response).and_return(html_content)
     end
 

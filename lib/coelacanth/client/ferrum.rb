@@ -2,13 +2,11 @@
 
 require "ferrum"
 
-module Coelacanth
+module Coelacanth::Client
   # Coelacanth::Client
-  class Client
+  class Ferrum < Coelacanth::Client::Base
     def initialize(url)
-      @validator = Validator.new
-      raise URI::InvalidURIError unless @validator.valid_url?(url)
-      @config = Coelacanth.config
+      super(url)
       remote_client.goto(url)
     end
 
@@ -32,7 +30,7 @@ module Coelacanth
     def remote_client
       if @remote_client.nil?
         headers = @config.read("remote_client.headers")
-        @remote_client = Ferrum::Browser.new(
+        @remote_client = ::Ferrum::Browser.new(
           ws_url: @config.read("remote_client.ws_url"),
           timeout: @config.read("remote_client.timeout")
         ).create_page

@@ -2,7 +2,9 @@
 
 require "net/http"
 require_relative "coelacanth/configure"
-require_relative "coelacanth/client"
+require_relative "coelacanth/client/base"
+require_relative "coelacanth/client/ferrum"
+require_relative "coelacanth/client/screenshot_one"
 require_relative "coelacanth/dom"
 require_relative "coelacanth/redirect"
 require_relative "coelacanth/validator"
@@ -15,7 +17,8 @@ module Coelacanth
   class DeepRedirectError < StandardError; end
 
   def self.analyze(url)
-    @client = Client.new(url)
+    client_class = config.read("client") == "screenshot_one" ? Client::ScreenshotOne : Client::Ferrum
+    @client = client_class.new(url)
     regular_url = Redirect.new.resolve_redirect(url)
     {
       dom: Dom.new.oga(regular_url),

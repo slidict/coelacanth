@@ -10,3 +10,9 @@ gem "rake", "~> 13.2"
 gem "rspec", "~> 3.0"
 gem "rubocop", "~> 1.21"
 gem "oga", "~> 3.4"
+gem "base64", "~> 0.2.0"
+
+group :development, :test do
+  gem "webmock", "~> 3.25"
+end
+

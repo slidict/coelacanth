@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-RSpec.describe Coelacanth::Client do
+RSpec.describe Coelacanth::Redirect do
   subject { described_class.new }
 
   describe "#resolve_redirect" do

@@ -6,7 +6,7 @@ module Coelacanth
   # Coelacanth::Dom
   class Dom
     def oga(url)
-      Oga.parse_xml(Net::HTTP.get_response(URI.parse(url)))
+      Oga.parse_xml(Net::HTTP.get_response(URI.parse(url)).body)
     end
   end
 end

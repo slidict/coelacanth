@@ -6,12 +6,10 @@ RSpec.describe Coelacanth::Dom do
   describe "#oga" do
     let(:url) { "http://example.com" }
     let(:html_content) { "<html><body><h1>Example</h1></body></html>" }
-    let(:client) { instance_double(Coelacanth::Client::Ferrum) }
     let(:parsed_dom) { Oga.parse_html(html_content) }
 
     before do
-      allow(Coelacanth::Client::Ferrum).to receive(:new).with(url).and_return(client)
-      allow(client).to receive(:get_response).and_return(html_content)
+      stub_request(:get, url).to_return(status: 200, body: html_content)
     end
 
     it "returns an Oga instance" do

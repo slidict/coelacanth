@@ -1,7 +1,7 @@
 PATH
   remote: .
   specs:
-    coelacanth (0.3.4)
+    coelacanth (0.3.5)
 
 GEM
   remote: https://rubygems.org/

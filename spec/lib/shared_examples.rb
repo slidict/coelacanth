@@ -39,22 +39,25 @@ RSpec.shared_examples "a remote client" do |config_values|
   let(:browser) { instance_double("Ferrum::Browser") }
   let(:page) { instance_double("Ferrum::Page") }
   let(:headers) { instance_double("Headers") }
-  let(:config_path) { Pathname.new("/path/to/config/coelacanth.yml") }
 
   before do
     allow(config).to receive(:root).and_return(Pathname.new("/path/to"))
     allow(config).to receive(:read).with("remote_client.headers").and_return(config_values[:headers])
     allow(config).to receive(:read).with("remote_client.ws_url").and_return(config_values[:ws_url])
     allow(config).to receive(:read).with("remote_client.timeout").and_return(config_values[:timeout])
-    allow(Ferrum::Browser).to receive(:new).with(ws_url: config_values[:ws_url], timeout: config_values[:timeout]).and_return(browser)
-    allow(browser).to receive(:create_page).and_return(page)
+
+    allow(Ferrum::Browser).to receive(:new).with(
+      ws_url: config_values[:ws_url], timeout: config_values[:timeout]
+    ).and_return(browser)
+
+    allow(browser).to receive(:page).and_return(page)
+    allow(browser).to receive(:goto).with('http://example.com') # ← これ！
     allow(page).to receive(:headers).and_return(headers)
-    allow(headers).to receive(:set).with(config_values[:headers])
-    allow(page).to receive(:goto).with('http://example.com')
+    allow(headers).to receive(:set).with(config_values[:headers]) if config_values[:headers]
   end
 
   it "creates a remote client with the correct headers" do
-    expect(client.send(:remote_client)).to eq(page)
+    expect(client.send(:remote_client)).to eq(browser)
     expect(headers).to have_received(:set).with(config_values[:headers]) unless config_values[:headers].nil?
   end
 end

@@ -32,13 +32,12 @@ module Coelacanth::Client
 
       headers = @config.read("remote_client.headers")
 
-      @browser = ::Ferrum::Browser.new(
+      @remote_client = ::Ferrum::Browser.new(
         ws_url: @config.read("remote_client.ws_url"),
         timeout: @config.read("remote_client.timeout")
       )
-      @remote_client = @browser.create_page
 
-      @remote_client.headers.set(headers) if headers && headers.any?
+      @remote_client.page.headers.set(headers) if headers && headers.any?
 
       @remote_client
     end

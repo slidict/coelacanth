@@ -13,50 +13,38 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v3
 
-      - name: Extract Version
+      - name: Extract version
         id: version
         run: |
           version=$(grep -Eo "[0-9]+\.[0-9]+\.[0-9]+" lib/coelacanth/version.rb | head -n 1)
           echo "version=v$version" >> $GITHUB_ENV
-          echo "Version is v$version"
+          echo "VERSION_TAG=v$version" >> $GITHUB_ENV
 
-      - name: Determine tag or HEAD
-        id: to_ref
+      - name: Check if version tag exists
+        id: check_tag
         run: |
-          if gh release view "$version" --json tagName > /dev/null 2>&1; then
-            echo "to_ref=$version" >> $GITHUB_ENV
-            echo "Using tag $version"
+          if gh release view "$VERSION_TAG" --json tagName > /dev/null 2>&1; then
+            echo "exists=true" >> $GITHUB_OUTPUT
           else
-            echo "to_ref=HEAD" >> $GITHUB_ENV
-            echo "Tag $version not found. Using HEAD as to_ref."
+            echo "exists=false" >> $GITHUB_OUTPUT
           fi
         env:
-          GH_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Get previous release tag
-        run: |
-          latest_release_tag=$(gh release list --exclude-drafts --limit 1 | cut -f1)
-          echo "latest_release_tag=$latest_release_tag" >> $GITHUB_ENV
-        env:
-          GH_TOKEN: ${{ github.token }}
-
-      - name: Generate CHANGELOG
+      - name: Generate CHANGELOG with requarks/changelog-action
+        if: steps.check_tag.outputs.exists == 'true'
         id: changelog
         uses: requarks/changelog-action@v1
         with:
-          token: ${{ github.token }}
-          fromTag: ${{ env.latest_release_tag }}
-          toTag: ${{ env.to_ref }}
-          excludeTypes: ""
-          includeInvalidCommits: false
+          token: ${{ secrets.GITHUB_TOKEN }}
+          tag: ${{ env.VERSION_TAG }}
+          writeToFile: true
+          changelogFilePath: CHANGELOG.md
 
-      - name: Create Draft Release
-        uses: ncipollo/release-action@v1.12.0
+      - name: Draft release with release-drafter
+        if: steps.check_tag.outputs.exists == 'false'
+        uses: release-drafter/release-drafter@v5
         with:
-          allowUpdates: true
-          draft: true
-          makeLatest: true
-          name: ${{ env.version }}
-          tag: ${{ env.version }}
-          body: ${{ steps.changelog.outputs.changes }}
-          token: ${{ github.token }}
+          config-name: release-drafter.yml
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

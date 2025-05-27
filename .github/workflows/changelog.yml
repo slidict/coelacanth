@@ -24,6 +24,8 @@ jobs:
         run: |
           latest_release_tag=$(gh release list --exclude-drafts --limit 1 | cut -f1)
           echo "latest_release_tag=$latest_release_tag" >> $GITHUB_ENV
+        env:
+          GH_TOKEN: ${{ github.token }}
 
       - name: Generate CHANGELOG
         id: changelog

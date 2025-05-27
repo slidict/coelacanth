@@ -20,8 +20,8 @@ module Coelacanth::Client
 
     def get_screenshot
       tempfile = Tempfile.new
+      remote_client.network.wait_for_idle! # まずJSの完了を待つ
       remote_client.screenshot(path: tempfile.path, format: "png")
-      remote_client.network.wait_for_idle! # might raise an error
       File.read(tempfile.path)
     end
 

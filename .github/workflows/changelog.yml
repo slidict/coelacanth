@@ -29,7 +29,6 @@ jobs:
         id: changelog
         uses: requarks/changelog-action@v1
         with:
-          allowUpdates: true
           token: ${{ github.token }}
           fromTag: ${{ env.latest_release_tag }}
           toTag: ${{ env.version }}

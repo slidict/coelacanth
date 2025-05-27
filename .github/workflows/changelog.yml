@@ -31,7 +31,7 @@ jobs:
           fromTag: ${{ github.ref_name }}
           toTag: ${{ env.latest_release_tag }}
           excludeTypes: ""
-          includeInvalidCommits: true
+          includeInvalidCommits: false
 
       - name: Arrange CHANGELOG
         run: |

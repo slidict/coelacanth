@@ -18,7 +18,20 @@ jobs:
         run: |
           version=$(grep -Eo "[0-9]+\.[0-9]+\.[0-9]+" lib/coelacanth/version.rb | head -n 1)
           echo "version=v$version" >> $GITHUB_ENV
-          echo "Version is $version"
+          echo "Version is v$version"
+
+      - name: Determine tag or HEAD
+        id: to_ref
+        run: |
+          if gh release view "$version" --json tagName > /dev/null 2>&1; then
+            echo "to_ref=$version" >> $GITHUB_ENV
+            echo "Using tag $version"
+          else
+            echo "to_ref=HEAD" >> $GITHUB_ENV
+            echo "Tag $version not found. Using HEAD as to_ref."
+          fi
+        env:
+          GH_TOKEN: ${{ github.token }}
 
       - name: Get previous release tag
         run: |
@@ -33,7 +46,7 @@ jobs:
         with:
           token: ${{ github.token }}
           fromTag: ${{ env.latest_release_tag }}
-          toTag: ${{ env.version }}
+          toTag: ${{ env.to_ref }}
           excludeTypes: ""
           includeInvalidCommits: false
 
@@ -43,7 +56,7 @@ jobs:
           allowUpdates: true
           draft: true
           makeLatest: true
-          name: v${{ env.version }}
-          tag: v${{ env.version }}
+          name: ${{ env.version }}
+          tag: ${{ env.version }}
           body: ${{ steps.changelog.outputs.changes }}
           token: ${{ github.token }}

@@ -46,9 +46,10 @@ jobs:
         git push origin HEAD:main
       continue-on-error: true
 
-    - name: Create GitHub Release
+    - name: Update GitHub Release
       uses: ncipollo/release-action@v1
       with:
+        allowUpdates: true
         tag: ${{ env.version }}
         name: ${{ env.version }}
         body: ${{ steps.changelog.outputs.changes }}

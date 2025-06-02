@@ -38,7 +38,7 @@ GEM
     public_suffix (6.0.2)
     racc (1.8.1)
     rainbow (3.1.1)
-    rake (13.2.1)
+    rake (13.3.0)
     regexp_parser (2.10.0)
     rexml (3.4.1)
     rspec (3.13.0)
@@ -94,7 +94,7 @@ DEPENDENCIES
   coelacanth!
   ferrum (~> 0.16)
   oga (~> 3.4)
-  rake (~> 13.2)
+  rake (~> 13.3)
   rspec (~> 3.0)
   rubocop (~> 1.75)
   webmock (~> 3.25)

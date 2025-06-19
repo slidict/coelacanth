@@ -12,10 +12,11 @@ module Coelacanth::Client
 
     def get_response(url = nil)
       @status_code = remote_client.network.status
-      @origin_response = remote_client
-      body = remote_client.body
       remote_client.network.wait_for_idle! # might raise an error
+      body = remote_client.body
       body
+    rescue => e
+      raise "#{e.class}: #{e.message} RemoteClient: #{@remote_client.inspect}"
     end
 
     def get_screenshot
@@ -23,6 +24,9 @@ module Coelacanth::Client
       remote_client.network.wait_for_idle! # まずJSの完了を待つ
       remote_client.screenshot(path: tempfile.path, format: "png")
       File.read(tempfile.path)
+    rescue => e
+      tempfile.close
+      raise "#{e.class}: #{e.message} RemoteClient: #{@remote_client.inspect}"
     end
 
     private

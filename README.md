@@ -51,6 +51,7 @@ Then, you can easily parse and extract information from a web page like this:
 ```ruby
 url = "https://example.com"
 stats = Coelacanth.analyze(url)
+puts stats[:title]
 ```
 
 - rspec
@@ -62,6 +63,7 @@ $ bundle exec rspec
 ## Features
 - Get dom by oga
 - Get screenshot
+- Get page title
 
 ## Commit Message Guidelines
 

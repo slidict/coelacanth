@@ -22,4 +22,18 @@ RSpec.describe Coelacanth::Dom do
       expect(result.to_xml).to eq(parsed_dom.to_xml)
     end
   end
+
+  describe "#title" do
+    let(:url) { "http://example.com" }
+    let(:html_content) { "<html><head><title>Example Title</title></head><body></body></html>" }
+
+    before do
+      stub_request(:get, url).to_return(status: 200, body: html_content)
+    end
+
+    it "returns the page title" do
+      subject.oga(url)
+      expect(subject.title).to eq("Example Title")
+    end
+  end
 end

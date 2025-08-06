@@ -16,11 +16,13 @@ RSpec.describe Coelacanth do
     let(:dom) { instance_double(Coelacanth::Dom) }
     let(:config) { instance_double(Coelacanth::Configure) }
     let(:screenshot) { "screenshot_data" }
+    let(:title) { "Example Title" }
 
     before do
       allow(Coelacanth).to receive(:config).and_return(config)
-      allow(Coelacanth::Dom).to receive(:new).and_return(dom)
-      allow(dom).to receive(:oga).with(url).and_return("parsed_dom")
+        allow(Coelacanth::Dom).to receive(:new).and_return(dom)
+        allow(dom).to receive(:oga).with(url).and_return("parsed_dom")
+        allow(dom).to receive(:title).and_return(title)
 
       # Stub HTTP requests
       stub_request(:get, "http://example.com/")
@@ -46,6 +48,7 @@ RSpec.describe Coelacanth do
         result = Coelacanth.analyze(url)
         expect(result).to eq({
           dom: "parsed_dom",
+          title: title,
           screenshot: screenshot
         })
       end
@@ -62,6 +65,7 @@ RSpec.describe Coelacanth do
         result = Coelacanth.analyze(url)
         expect(result).to eq({
           dom: "parsed_dom",
+          title: title,
           screenshot: screenshot
         })
       end

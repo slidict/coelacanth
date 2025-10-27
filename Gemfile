@@ -13,6 +13,6 @@ gem "oga", "~> 3.4"
 gem "base64", "~> 0.3.0"
 
 group :development, :test do
-  gem "webmock", "~> 3.25"
+  gem "webmock", "~> 3.26"
 end
 

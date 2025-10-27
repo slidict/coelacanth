@@ -7,7 +7,7 @@ gemspec
 
 gem "ferrum", "~> 0.16"
 gem "rake", "~> 13.3"
-gem "rspec", "~> 3.0"
+gem "rspec", "~> 3.13"
 gem "rubocop", "~> 1.77"
 gem "oga", "~> 3.4"
 gem "base64", "~> 0.3.0"

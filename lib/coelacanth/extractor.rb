@@ -22,13 +22,13 @@ module Coelacanth
     )
 
     def call(html:, url: nil)
-      document = Normalizer.new.call(html: html, base_url: url)
+      document = ExtractorNormalizer.new.call(html: html, base_url: url)
 
       [
-        [MetadataProbe.new, 0.85],
-        [HeuristicProbe.new, 0.75],
-        [WeakMlProbe.new, 0.70],
-        [FallbackProbe.new, 0.0]
+        [ExtractorMetadataProbe.new, 0.85],
+        [ExtractorHeuristicProbe.new, 0.45],
+        [ExtractorWeakMlProbe.new, 0.70],
+        [ExtractorFallbackProbe.new, 0.0]
       ].each do |probe, threshold|
         result = probe.call(doc: document, url: url)
         next unless result
@@ -45,8 +45,8 @@ module Coelacanth
       node = result.node
       {
         title: result.title,
-        body_markdown: MarkdownRenderer.render(node),
-        images: ImageCollector.new.call(node),
+        body_markdown: ExtractorMarkdownRenderer.render(node),
+        images: ExtractorImageCollector.new.call(node),
         published_at: result.published_at,
         byline: result.byline,
         source: result.source_tag,

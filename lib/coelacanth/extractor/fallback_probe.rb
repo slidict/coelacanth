@@ -5,9 +5,8 @@ require "oga"
 require_relative "utilities"
 
 module Coelacanth
-  module Extractor
-    # Attempts final recovery strategies when all other probes fail.
-    class FallbackProbe
+  # Attempts final recovery strategies when all other probes fail.
+  class ExtractorFallbackProbe
       Result = Struct.new(
         :title,
         :node,
@@ -30,5 +29,4 @@ module Coelacanth
         )
       end
     end
-  end
 end

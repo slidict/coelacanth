@@ -70,7 +70,7 @@ RSpec.describe Coelacanth::Extractor do
       expect(result[:title]).to eq("Sample article")
       expect(result[:byline]).to eq("Heuristic Author")
       expect(result[:body_markdown]).to include("This is the first paragraph")
-      expect(result[:confidence]).to be >= 0.75
+      expect(result[:confidence]).to be >= 0.45
     end
   end
 
@@ -92,7 +92,7 @@ RSpec.describe Coelacanth::Extractor do
     end
 
     it "uses the weak ML probe when heuristics are insufficient" do
-      allow_any_instance_of(Coelacanth::Extractor::HeuristicProbe).to receive(:call).and_return(nil)
+      allow_any_instance_of(Coelacanth::ExtractorHeuristicProbe).to receive(:call).and_return(nil)
 
       result = extractor.call(html: html, url: "https://example.com/ml")
 

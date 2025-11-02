@@ -4,9 +4,8 @@ require "time"
 require "uri"
 
 module Coelacanth
-  module Extractor
-    # Shared helpers for the extractor pipeline.
-    module Utilities
+  # Shared helpers for the extractor pipeline.
+  module ExtractorUtilities
       PUNCTUATION = %w[。 、 ． ・ . , ! ? ： ； ; :]
 
       module_function
@@ -37,7 +36,15 @@ module Coelacanth
       end
 
       def depth(node)
-        node&.ancestors&.length.to_i
+        return 0 unless node
+
+        depth = 0
+        current = node
+        while current.respond_to?(:parent) && current.parent && !current.parent.is_a?(Oga::XML::Document)
+          current = current.parent
+          depth += 1
+        end
+        depth
       end
 
       def class_id_tokens(node)
@@ -76,6 +83,5 @@ module Coelacanth
       rescue URI::Error
         path
       end
-    end
   end
 end

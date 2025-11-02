@@ -1,9 +1,8 @@
 # frozen_string_literal: true
 
 module Coelacanth
-  module Extractor
-    # Collects image metadata from the extracted DOM node.
-    class ImageCollector
+  # Collects image metadata from the extracted DOM node.
+  class ExtractorImageCollector
       def call(node)
         return [] unless node
 
@@ -15,5 +14,4 @@ module Coelacanth
         end.reject { |entry| entry[:src].empty? }
       end
     end
-  end
 end

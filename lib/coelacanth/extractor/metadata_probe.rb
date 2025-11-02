@@ -6,9 +6,8 @@ require "oga"
 require_relative "utilities"
 
 module Coelacanth
-  module Extractor
-    # Attempts to pull article metadata such as JSON-LD and OpenGraph tags.
-    class MetadataProbe
+  # Attempts to pull article metadata such as JSON-LD and OpenGraph tags.
+  class ExtractorMetadataProbe
       ARTICLE_TYPES = %w[Article NewsArticle BlogPosting ReportageNewsArticle LiveBlogPosting].freeze
 
       Result = Struct.new(
@@ -48,7 +47,7 @@ module Coelacanth
             return Result.new(
               title: candidate["headline"] || candidate["name"],
               node: node,
-              published_at: Utilities.parse_time(candidate["datePublished"] || candidate["dateCreated"]),
+              published_at: ExtractorUtilities.parse_time(candidate["datePublished"] || candidate["dateCreated"]),
               byline: extract_author(candidate["author"]),
               source_tag: :jsonld,
               confidence: 0.9
@@ -89,7 +88,7 @@ module Coelacanth
       end
 
       def title_from_meta(doc)
-        Utilities.meta_content(
+        ExtractorUtilities.meta_content(
           doc,
           "meta[property='og:title']",
           "meta[name='twitter:title']",
@@ -98,8 +97,8 @@ module Coelacanth
       end
 
       def published_at_from_meta(doc)
-        Utilities.parse_time(
-          Utilities.meta_content(
+        ExtractorUtilities.parse_time(
+          ExtractorUtilities.meta_content(
             doc,
             "meta[property='article:published_time']",
             "meta[name='pubdate']",
@@ -110,12 +109,11 @@ module Coelacanth
       end
 
       def byline_from_meta(doc)
-        Utilities.meta_content(
+        ExtractorUtilities.meta_content(
           doc,
           "meta[name='author']",
           "meta[property='article:author']"
         )
       end
     end
-  end
 end

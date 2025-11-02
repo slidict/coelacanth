@@ -5,9 +5,8 @@ require "oga"
 require_relative "utilities"
 
 module Coelacanth
-  module Extractor
-    # Scores DOM nodes based on simple heuristics to locate the primary article body.
-    class HeuristicProbe
+  # Scores DOM nodes based on simple heuristics to locate the primary article body.
+  class ExtractorHeuristicProbe
       Result = Struct.new(
         :title,
         :node,
@@ -51,14 +50,14 @@ module Coelacanth
       private
 
       def score_candidate(node)
-        text_length = Utilities.text_length(node)
+        text_length = ExtractorUtilities.text_length(node)
         return if text_length < 80
 
-        link_density = Utilities.link_density(node)
-        punct_density = Utilities.punctuation_density(node)
+        link_density = ExtractorUtilities.link_density(node)
+        punct_density = ExtractorUtilities.punctuation_density(node)
         tag_weight = TAG_WEIGHTS[node.name]
         class_weight = class_score(node)
-        depth_penalty = Utilities.depth(node) * 4
+        depth_penalty = ExtractorUtilities.depth(node) * 4
         sibling_bonus = sibling_variance(node)
 
         score = (
@@ -75,7 +74,7 @@ module Coelacanth
       end
 
       def class_score(node)
-        tokens = Utilities.class_id_tokens(node)
+        tokens = ExtractorUtilities.class_id_tokens(node)
         score = tokens.count { |token| POSITIVE_TOKENS.include?(token) } * 40
         score -= tokens.count { |token| NEGATIVE_TOKENS.include?(token) } * 60
         score
@@ -85,10 +84,10 @@ module Coelacanth
         parent = node.parent
         return 0 unless parent
 
-        siblings = parent.children.select(&:element?)
+        siblings = parent.children.select { |child| child.is_a?(Oga::XML::Element) }
         return 0 if siblings.length < 2
 
-        lengths = siblings.map { |sibling| Utilities.text_length(sibling) }
+        lengths = siblings.map { |sibling| ExtractorUtilities.text_length(sibling) }
         mean = lengths.sum.to_f / lengths.length
         variance = lengths.map { |length| (length - mean)**2 }.sum.to_f / lengths.length
         Math.sqrt(variance) * 0.25
@@ -133,7 +132,7 @@ module Coelacanth
       end
 
       def title_from_meta(doc)
-        Utilities.meta_content(
+        ExtractorUtilities.meta_content(
           doc,
           "meta[property='og:title']",
           "meta[name='twitter:title']",
@@ -142,8 +141,8 @@ module Coelacanth
       end
 
       def published_at_from_meta(doc)
-        Utilities.parse_time(
-          Utilities.meta_content(
+        ExtractorUtilities.parse_time(
+          ExtractorUtilities.meta_content(
             doc,
             "meta[property='article:published_time']",
             "meta[name='pubdate']",
@@ -154,12 +153,11 @@ module Coelacanth
       end
 
       def byline_from_meta(doc)
-        Utilities.meta_content(
+        ExtractorUtilities.meta_content(
           doc,
           "meta[name='author']",
           "meta[property='article:author']"
         )
       end
     end
-  end
 end

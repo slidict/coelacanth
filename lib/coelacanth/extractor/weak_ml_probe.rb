@@ -5,9 +5,8 @@ require "oga"
 require_relative "utilities"
 
 module Coelacanth
-  module Extractor
-    # Lightweight probabilistic scorer that emulates a learned classifier using heuristics.
-    class WeakMlProbe
+  # Lightweight probabilistic scorer that emulates a learned classifier using heuristics.
+  class ExtractorWeakMlProbe
       Result = Struct.new(
         :title,
         :node,
@@ -67,14 +66,14 @@ module Coelacanth
       private
 
       def evaluate(node)
-        text_length = Utilities.text_length(node)
+        text_length = ExtractorUtilities.text_length(node)
         return if text_length < 60
 
         features = {
           text_length: text_length,
-          link_density: Utilities.link_density(node),
-          punctuation_density: Utilities.punctuation_density(node),
-          depth: Utilities.depth(node),
+          link_density: ExtractorUtilities.link_density(node),
+          punctuation_density: ExtractorUtilities.punctuation_density(node),
+          depth: ExtractorUtilities.depth(node),
           token_score: token_score(node)
         }
 
@@ -85,7 +84,7 @@ module Coelacanth
       end
 
       def token_score(node)
-        Utilities.class_id_tokens(node).sum do |token|
+        ExtractorUtilities.class_id_tokens(node).sum do |token|
           TOKEN_WEIGHTS.fetch(token, 0.0)
         end
       end
@@ -104,7 +103,7 @@ module Coelacanth
       end
 
       def title_from_meta(doc)
-        Utilities.meta_content(
+        ExtractorUtilities.meta_content(
           doc,
           "meta[property='og:title']",
           "meta[name='twitter:title']",
@@ -113,8 +112,8 @@ module Coelacanth
       end
 
       def published_at_from_meta(doc)
-        Utilities.parse_time(
-          Utilities.meta_content(
+        ExtractorUtilities.parse_time(
+          ExtractorUtilities.meta_content(
             doc,
             "meta[property='article:published_time']",
             "meta[name='pubdate']",
@@ -125,12 +124,11 @@ module Coelacanth
       end
 
       def byline_from_meta(doc)
-        Utilities.meta_content(
+        ExtractorUtilities.meta_content(
           doc,
           "meta[name='author']",
           "meta[property='article:author']"
         )
       end
     end
-  end
 end

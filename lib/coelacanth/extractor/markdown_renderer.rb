@@ -1,9 +1,8 @@
 # frozen_string_literal: true
 
 module Coelacanth
-  module Extractor
-    # Converts a DOM node into a lightweight Markdown representation.
-    class MarkdownRenderer
+  # Converts a DOM node into a lightweight Markdown representation.
+  class ExtractorMarkdownRenderer
       def self.render(node)
         new(node).render
       end
@@ -22,12 +21,11 @@ module Coelacanth
       private
 
       def traverse(node, depth = 0)
-        case node.type
-        when :document
+        if node.is_a?(Oga::XML::Document)
           node.children.flat_map { |child| traverse(child, depth) }
-        when :element
+        elsif node.is_a?(Oga::XML::Element)
           render_element(node, depth)
-        when :text
+        elsif node.is_a?(Oga::XML::Text)
           text = node.text.strip
           text.empty? ? nil : text
         else
@@ -46,9 +44,9 @@ module Coelacanth
           heading = "#" * level + " " + inline_children(node, depth)
           [heading, ""]
         when "ul"
-          node.children.select(&:element?).flat_map { |child| render_list_item(child, depth, "-") } + [""]
+          node.children.select { |child| child.is_a?(Oga::XML::Element) }.flat_map { |child| render_list_item(child, depth, "-") } + [""]
         when "ol"
-          node.children.select(&:element?).each_with_index.flat_map do |child, index|
+          node.children.select { |child| child.is_a?(Oga::XML::Element) }.each_with_index.flat_map do |child, index|
             render_list_item(child, depth, "#{index + 1}.")
           end + [""]
         when "li"
@@ -83,5 +81,4 @@ module Coelacanth
         ["#{marker} #{text}"]
       end
     end
-  end
 end

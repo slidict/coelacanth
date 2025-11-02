@@ -8,6 +8,8 @@
 
 ## Installation
 
+`coelacanth` requires Ruby **3.4 or newer**.
+
 Add this line to your application's Gemfile:
 
 

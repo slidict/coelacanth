@@ -36,7 +36,7 @@ module Coelacanth
         return if candidates.empty?
 
         best = candidates.max_by { |candidate| candidate[:score] }
-        return if best[:score] < 120
+        return if best[:score] < minimum_score
 
         Result.new(
           title: title_from_meta(doc),
@@ -72,6 +72,10 @@ module Coelacanth
         )
 
         { node: node, score: score }
+      end
+
+      def minimum_score
+        95
       end
 
       def class_score(node)

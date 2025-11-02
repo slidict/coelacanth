@@ -6,7 +6,7 @@ module Coelacanth
   class Extractor
     # Identifies sidebar or inline news listings and returns link arrays.
     class ListingCollector
-      CANDIDATE_SELECTOR = "section, div, ul, ol".freeze
+      CANDIDATE_SELECTOR = "aside, section, div, ul, ol".freeze
       MIN_ITEMS = 3
       MIN_TITLE_LENGTH = 6
 
@@ -92,6 +92,9 @@ module Coelacanth
           grouped = direct_children.select { |child| child.name == tag }
           return grouped if grouped.length >= MIN_ITEMS
         end
+
+        list_container = direct_children.find { |child| %w[ul ol].include?(child.name) }
+        return Utilities.element_children(list_container) if list_container
 
         []
       end

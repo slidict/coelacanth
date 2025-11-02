@@ -8,7 +8,7 @@ module Coelacanth
   class Extractor
     # Sanitizes HTML and prepares an Oga document.
     class Normalizer
-      REMOVABLE_SELECTORS = %w[script style noscript iframe form nav].freeze
+      REMOVABLE_SELECTORS = %w[style noscript iframe form nav].freeze
 
       def call(html:, base_url: nil)
         document = Oga.parse_html(html)
@@ -22,6 +22,12 @@ module Coelacanth
       def remove_noise(document)
         REMOVABLE_SELECTORS.each do |selector|
           document.css(selector).each(&:remove)
+        end
+
+        document.css("script").each do |node|
+          next if node["type"].to_s.strip.casecmp("application/ld+json").zero?
+
+          node.remove
         end
       end
 

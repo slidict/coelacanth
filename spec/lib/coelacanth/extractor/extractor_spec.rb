@@ -157,5 +157,54 @@ RSpec.describe Coelacanth::Extractor do
         }
       )
     end
+
+    it "detects definition list style listings" do
+      html = <<~HTML
+        <html>
+          <body>
+            <article>
+              <h1>デジタル庁テスト</h1>
+              <p>本文です。</p>
+            </article>
+            <aside class="p-news">
+              <h2>新着情報</h2>
+              <dl class="p-news__list">
+                <dt><time datetime="2024-04-01">2024.04.01</time></dt>
+                <dd><a href="/news/10">デジタル庁の最新発表</a></dd>
+                <dt><time datetime="2024-03-28">2024.03.28</time></dt>
+                <dd><a href="/news/11">マイナンバー関連の更新</a></dd>
+                <dt><time datetime="2024-03-18">2024.03.18</time></dt>
+                <dd><a href="/news/12">GovTech イベントのお知らせ</a></dd>
+              </dl>
+            </aside>
+          </body>
+        </html>
+      HTML
+
+      result = extractor.call(html: html, url: "https://www.digital.go.jp/")
+
+      expect(result[:listings]).to include(
+        {
+          heading: "新着情報",
+          items: [
+            {
+              title: "デジタル庁の最新発表",
+              url: "https://www.digital.go.jp/news/10",
+              snippet: "2024.04.01"
+            },
+            {
+              title: "マイナンバー関連の更新",
+              url: "https://www.digital.go.jp/news/11",
+              snippet: "2024.03.28"
+            },
+            {
+              title: "GovTech イベントのお知らせ",
+              url: "https://www.digital.go.jp/news/12",
+              snippet: "2024.03.18"
+            }
+          ]
+        }
+      )
+    end
   end
 end

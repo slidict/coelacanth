@@ -18,13 +18,27 @@ RSpec.describe Coelacanth do
     let(:config) { instance_double(Coelacanth::Configure) }
     let(:screenshot) { "screenshot_data" }
     let(:extraction_payload) { { title: "Example", body_markdown: "Body" } }
+    let(:utf8_html) { "<html><body>デジタル庁のテスト</body></html>" }
+    let(:binary_html) { utf8_html.dup.force_encoding(Encoding::ASCII_8BIT) }
 
     before do
       allow(Coelacanth).to receive(:config).and_return(config)
       allow(Coelacanth::Dom).to receive(:new).and_return(dom)
-      allow(dom).to receive(:oga).with(url, html: "").and_return("parsed_dom")
       allow(Coelacanth::Extractor).to receive(:new).and_return(extractor)
-      allow(extractor).to receive(:call).with(html: "", url: url).and_return(extraction_payload)
+
+      allow(dom).to receive(:oga) do |passed_url, html:|
+        expect(passed_url).to eq(url)
+        expect(html.encoding).to eq(Encoding::UTF_8)
+        expect(html).to eq(utf8_html)
+        "parsed_dom"
+      end
+
+      allow(extractor).to receive(:call) do |**args|
+        expect(args[:html].encoding).to eq(Encoding::UTF_8)
+        expect(args[:html]).to eq(utf8_html)
+        expect(args[:url]).to eq(url)
+        extraction_payload
+      end
 
       # Stub HTTP requests
       stub_request(:get, "http://example.com/")
@@ -36,7 +50,7 @@ RSpec.describe Coelacanth do
             'User-Agent' => 'Ruby'
           }
         )
-        .to_return(status: 200, body: "", headers: {})
+        .to_return(status: 200, body: binary_html, headers: {})
     end
 
     context "when client is ferrum" do

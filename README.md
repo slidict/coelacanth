@@ -118,11 +118,17 @@ In addition to the main article body, the extractor also runs a
 `ListingCollector` that scans the surrounding layout for sidebar "latest news"
 or topic digests. When it detects a sufficiently rich list, the collector
 returns an array of sections (each with an optional heading plus link items) so
-that you can surface related headlines alongside the primary content.
+that you can surface related headlines alongside the primary content. The
+collector relies purely on markup structure—unordered/ordered lists, definition
+lists (`<dl>` with `dt` / `dd>` pairs as used on [digital.go.jp](https://www.digital.go.jp/)),
+and repeated card-like `<div>` blocks—rather than keyword matching, so Japanese
+government-style timelines and other non-English feeds are captured reliably.
 
 ## Features
 - Get dom by oga
 - Get screenshot
+- Force-fetch HTML responses into UTF-8 before extraction so Japanese sources
+  such as digital.go.jp parse correctly
 
 ## Commit Message Guidelines
 

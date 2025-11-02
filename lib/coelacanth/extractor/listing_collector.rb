@@ -6,9 +6,9 @@ module Coelacanth
   class Extractor
     # Identifies sidebar or inline news listings and returns link arrays.
     class ListingCollector
-      CANDIDATE_SELECTOR = "aside, section, div, ul, ol".freeze
+      CANDIDATE_SELECTOR = "aside, section, div, ul, ol, dl".freeze
       MIN_ITEMS = 3
-      MIN_TITLE_LENGTH = 6
+      MIN_TITLE_LENGTH = 2
 
       def call(document:, base_url: nil, primary_node: nil)
         candidates = collect_candidates(document, base_url, primary_node)
@@ -41,6 +41,8 @@ module Coelacanth
         return true if nested_listing_container?(node)
 
         return false unless primary_node
+        return false unless primary_node.respond_to?(:name)
+        return false if %w[body html].include?(primary_node.name)
 
         node == primary_node ||
           ancestor?(node, primary_node) ||
@@ -53,7 +55,7 @@ module Coelacanth
         end
       end
 
-      LISTING_CONTAINER_TAGS = %w[aside section div ul ol].freeze
+      LISTING_CONTAINER_TAGS = %w[aside section div ul ol dl].freeze
 
       def ancestor?(node, candidate)
         Utilities.ancestors(node).any? { |ancestor| ancestor == candidate }
@@ -88,14 +90,19 @@ module Coelacanth
 
       def candidate_children(node)
         direct_children = Utilities.element_children(node)
-        groups = %w[li article div section p]
+        return [] if direct_children.empty?
+
+        anchor_children = direct_children.select { |child| contains_link?(child) }
+        return anchor_children if anchor_children.length >= MIN_ITEMS
+
+        groups = %w[li article div section p dd]
 
         groups.each do |tag|
           grouped = direct_children.select { |child| child.name == tag }
           return grouped if grouped.length >= MIN_ITEMS
         end
 
-        list_container = direct_children.find { |child| %w[ul ol].include?(child.name) }
+        list_container = direct_children.find { |child| %w[ul ol dl].include?(child.name) }
         return Utilities.element_children(list_container) if list_container
 
         []
@@ -115,9 +122,45 @@ module Coelacanth
       end
 
       def build_snippet(node, title)
+        snippet_from_node_text(node, title) || metadata_context(node, title)
+      end
+
+      def snippet_from_node_text(node, title)
         text = normalize_text(node.text)
         snippet = text.sub(title, "").strip
-        snippet.empty? ? nil : snippet
+        snippet.empty? ? nil : truncate(snippet)
+      end
+
+      def metadata_context(node, title)
+        candidate = time_text(node) || preceding_metadata(node)
+        return nil if candidate.nil?
+
+        candidate = candidate.sub(title, "").strip
+        candidate.empty? ? nil : truncate(candidate)
+      end
+
+      def time_text(node)
+        node.css("time").filter_map { |time| normalize_text(time.text) }.find { |text| !text.empty? }
+      end
+
+      def preceding_metadata(node)
+        previous = Utilities.previous_element(node)
+        3.times do
+          break unless previous
+
+          text = normalize_text(previous.text)
+          return text unless text.empty?
+
+          previous = Utilities.previous_element(previous)
+        end
+
+        nil
+      end
+
+      def truncate(text)
+        return text if text.length <= 120
+
+        text[0...117] + "..."
       end
 
       def heading_for(node)
@@ -156,8 +199,8 @@ module Coelacanth
         dominant_count = dominant_children.length
 
         uniform_bonus = dominant_count == children.length ? 60 : 20
-        list_bonus = %w[ul ol].include?(node.name) ? 90 : 0
-        list_bonus += 45 if dominant_tag && %w[li].include?(dominant_tag)
+        list_bonus = %w[ul ol dl].include?(node.name) ? 90 : 0
+        list_bonus += 45 if dominant_tag && %w[li dd].include?(dominant_tag)
 
         distribution_bonus = distribution_consistency_bonus(children)
 

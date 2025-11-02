@@ -22,7 +22,9 @@ module Coelacanth
     @client = client_class.new(url)
     regular_url = Redirect.new.resolve_redirect(url)
     response = Net::HTTP.get_response(URI.parse(regular_url))
-    html = response.body
+    html = response.body.to_s
+    html = html.force_encoding(Encoding::UTF_8)
+    html = html.encode(Encoding::UTF_8, invalid: :replace, undef: :replace)
     extractor_result = Extractor.new.call(html: html, url: regular_url)
     {
       dom: Dom.new.oga(regular_url, html: html),

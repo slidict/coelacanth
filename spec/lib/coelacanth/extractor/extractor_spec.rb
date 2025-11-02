@@ -37,6 +37,7 @@ RSpec.describe Coelacanth::Extractor do
       expect(result[:byline]).to eq("Metadata Author")
       expect(result[:confidence]).to be >= 0.85
       expect(result[:body_markdown]).to include("Structured article body")
+      expect(result[:body_markdown_list]).to eq(["Structured article body."])
       expect(result[:listings]).to eq([])
     end
   end
@@ -71,6 +72,8 @@ RSpec.describe Coelacanth::Extractor do
       expect(result[:title]).to eq("Sample article")
       expect(result[:byline]).to eq("Heuristic Author")
       expect(result[:body_markdown]).to include("This is the first paragraph")
+      expect(result[:body_markdown_list]).to include("# Heading")
+      expect(result[:body_markdown_list]).to include("This is the first paragraph of the article body.")
       expect(result[:confidence]).to be >= 0.75
       expect(result[:listings]).to eq([])
     end
@@ -100,6 +103,7 @@ RSpec.describe Coelacanth::Extractor do
 
       expect(result[:source]).to eq(:ml)
       expect(result[:body_markdown]).to include("Machine learning fallback body")
+      expect(result[:body_markdown_list]).to include("Machine learning fallback body.")
       expect(result[:confidence]).to be >= 0.45
       expect(result[:listings]).to eq([])
     end

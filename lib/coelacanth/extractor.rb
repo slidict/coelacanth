@@ -48,9 +48,13 @@ module Coelacanth
 
     def build_response(result, document:, url:)
       node = result.node
+      body_markdown = MarkdownRenderer.render(node)
+      body_markdown_list = body_markdown.to_s.split(/\n{2,}/).map { |segment| segment.strip }.reject(&:empty?)
+
       {
         title: result.title,
-        body_markdown: MarkdownRenderer.render(node),
+        body_markdown: body_markdown,
+        body_markdown_list: body_markdown_list,
         images: ImageCollector.new.call(node),
         published_at: result.published_at,
         byline: result.byline,

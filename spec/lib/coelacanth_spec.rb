@@ -17,7 +17,7 @@ RSpec.describe Coelacanth do
     let(:extractor) { instance_double(Coelacanth::Extractor) }
     let(:config) { instance_double(Coelacanth::Configure) }
     let(:screenshot) { "screenshot_data" }
-    let(:extraction_payload) { { title: "Example", body_markdown: "Body" } }
+    let(:extraction_payload) { { title: "Example", body_markdown: "Body", body_markdown_list: ["Body"] } }
     let(:utf8_html) { "<html><body>デジタル庁のテスト</body></html>" }
     let(:binary_html) { utf8_html.dup.force_encoding(Encoding::ASCII_8BIT) }
 

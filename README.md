@@ -95,6 +95,7 @@ result = extractor.call(html: raw_html, url: "https://example.com/article")
 result # => {
   title: "Article title",
   body_markdown: "...",
+  body_markdown_list: ["..."],
   images: [ { src: "https://...", alt: "..." }, ... ],
   published_at: Time.parse("2023-11-24T12:00:00Z"),
   byline: "Author Name",
@@ -114,14 +115,17 @@ result # => {
 
 This multi-stage design keeps the extractor robust against layout drift, A/B
 tests, and CMS redesigns without resorting to fragile, site-specific selectors.
-In addition to the main article body, the extractor also runs a
-`ListingCollector` that scans the surrounding layout for sidebar "latest news"
-or topic digests. When it detects a sufficiently rich list, the collector
-returns an array of sections (each with an optional heading plus link items) so
-that you can surface related headlines alongside the primary content. The
-collector relies purely on markup structure—unordered/ordered lists, definition
-lists (`<dl>` with `dt` / `dd>` pairs as used on [digital.go.jp](https://www.digital.go.jp/)),
-and repeated card-like `<div>` blocks—rather than keyword matching, so Japanese
+In addition to the main article body, the extractor now returns the Markdown
+text both as a single string and as an array of top-level blocks via
+`body_markdown_list`, making it easy to feed paragraph-level content into other
+systems. The extractor also runs a `ListingCollector` that scans the surrounding
+layout for sidebar "latest news" or topic digests. When it detects a
+sufficiently rich list, the collector returns an array of sections (each with an
+optional heading plus link items) so that you can surface related headlines
+alongside the primary content. The collector relies purely on markup
+structure—unordered/ordered lists, definition lists (`<dl>` with `dt` / `dd>`
+pairs as used on [digital.go.jp](https://www.digital.go.jp/)), and repeated
+card-like `<div>` blocks—rather than keyword matching, so Japanese
 government-style timelines and other non-English feeds are captured reliably.
 
 ## Features

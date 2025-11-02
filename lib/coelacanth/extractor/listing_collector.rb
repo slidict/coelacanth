@@ -46,12 +46,22 @@ module Coelacanth
       end
 
       def skip_node?(node, primary_node)
+        return true if nested_listing_container?(node)
+
         return false unless primary_node
 
         node == primary_node ||
           ancestor?(node, primary_node) ||
           ancestor?(primary_node, node)
       end
+
+      def nested_listing_container?(node)
+        Utilities.ancestors(node).any? do |ancestor|
+          Utilities.element?(ancestor) && LISTING_CONTAINER_TAGS.include?(ancestor.name)
+        end
+      end
+
+      LISTING_CONTAINER_TAGS = %w[aside section div ul ol].freeze
 
       def ancestor?(node, candidate)
         Utilities.ancestors(node).any? { |ancestor| ancestor == candidate }

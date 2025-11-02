@@ -136,7 +136,9 @@ module Coelacanth
       end
 
       def confidence(score)
-        value = 1.0 / (1.0 + Math.exp(-(score - 140) / 90.0))
+        return 0.0 if score.to_f <= 0.0
+
+        value = 1.0 / (1.0 + Math.exp(-(score - 100) / 12.0))
         value.clamp(0.0, 0.95)
       end
 

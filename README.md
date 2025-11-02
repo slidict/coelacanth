@@ -59,6 +59,51 @@ stats = Coelacanth.analyze(url)
 $ bundle exec rspec
 ```
 
+### Selector-free article extraction
+
+For projects that need a resilient way to pull the main article content without
+hand-maintained CSS selectors, `coelacanth` ships with a multi-stage
+`Coelacanth::Extractor`. The extractor orchestrates a set of probes that work
+from the cheapest, highest-signal sources toward more involved fallbacks:
+
+1. **MetadataProbe** – looks for structured data such as `schema.org` JSON-LD,
+   Open Graph and Twitter Card tags, and semantic containers like
+   `<main>`/`<article>` elements. When these values are present they usually
+   provide a near-perfect extraction at zero additional cost.
+2. **HeuristicProbe** – walks block-level nodes and scores them using text
+   length, link density, punctuation density, tag/attribute hints, DOM depth,
+   and sibling variance to pick the most article-like node. Neighboring headers
+   and media are greedily attached so the narrative context is preserved.
+3. **WeakMlProbe** – optionally boosts accuracy with a lightweight classifier
+   (e.g., logistic regression) that combines the heuristic features with class
+   and id tokens such as `content`, `article-body`, or `post` to recover pages
+   that the pure heuristics miss.
+4. **FallbackProbe** – as a last resort it follows AMP or print links when
+   available and can fall back to summarizing the whole document for stubborn
+   layouts.
+
+Each probe returns a confidence score, and the extractor stops at the first
+result that clears its threshold (0.85 for metadata, 0.75 for heuristics, 0.70
+for weak ML). The final payload includes:
+
+```ruby
+extractor = Coelacanth::Extractor.new
+result = extractor.call(html: raw_html, url: "https://example.com/article")
+
+result # => {
+  title: "Article title",
+  body_markdown: "...",
+  images: [ { src: "https://...", alt: "..." }, ... ],
+  published_at: Time.parse("2023-11-24T12:00:00Z"),
+  byline: "Author Name",
+  source: :heuristic,
+  confidence: 0.78
+}
+```
+
+This multi-stage design keeps the extractor robust against layout drift, A/B
+tests, and CMS redesigns without resorting to fragile, site-specific selectors.
+
 ## Features
 - Get dom by oga
 - Get screenshot

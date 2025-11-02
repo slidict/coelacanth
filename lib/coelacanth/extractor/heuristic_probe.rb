@@ -5,7 +5,7 @@ require "oga"
 require_relative "utilities"
 
 module Coelacanth
-  module Extractor
+  class Extractor
     # Scores DOM nodes based on simple heuristics to locate the primary article body.
     class HeuristicProbe
       Result = Struct.new(

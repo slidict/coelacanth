@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 module Coelacanth
-  module Extractor
+  class Extractor
     # Collects image metadata from the extracted DOM node.
     class ImageCollector
       def call(node)

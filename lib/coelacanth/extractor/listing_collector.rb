@@ -3,7 +3,7 @@
 require_relative "utilities"
 
 module Coelacanth
-  module Extractor
+  class Extractor
     # Identifies sidebar or inline news listings and returns link arrays.
     class ListingCollector
       CANDIDATE_SELECTOR = "section, div, ul, ol".freeze

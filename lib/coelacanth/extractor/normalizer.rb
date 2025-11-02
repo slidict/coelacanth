@@ -5,7 +5,7 @@ require "oga"
 require_relative "utilities"
 
 module Coelacanth
-  module Extractor
+  class Extractor
     # Sanitizes HTML and prepares an Oga document.
     class Normalizer
       REMOVABLE_SELECTORS = %w[script style noscript iframe form nav].freeze

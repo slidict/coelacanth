@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 module Coelacanth
-  module Extractor
+  class Extractor
     # Converts a DOM node into a lightweight Markdown representation.
     class MarkdownRenderer
       def self.render(node)

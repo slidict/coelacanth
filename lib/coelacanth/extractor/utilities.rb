@@ -4,7 +4,7 @@ require "time"
 require "uri"
 
 module Coelacanth
-  module Extractor
+  class Extractor
     # Shared helpers for the extractor pipeline.
     module Utilities
       PUNCTUATION = %w[。 、 ． ・ . , ! ? ： ； ; :]

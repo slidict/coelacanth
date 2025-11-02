@@ -5,7 +5,7 @@ require "oga"
 require_relative "utilities"
 
 module Coelacanth
-  module Extractor
+  class Extractor
     # Lightweight probabilistic scorer that emulates a learned classifier using heuristics.
     class WeakMlProbe
       Result = Struct.new(

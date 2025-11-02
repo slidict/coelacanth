@@ -6,7 +6,7 @@ require "oga"
 require_relative "utilities"
 
 module Coelacanth
-  module Extractor
+  class Extractor
     # Attempts to pull article metadata such as JSON-LD and OpenGraph tags.
     class MetadataProbe
       ARTICLE_TYPES = %w[Article NewsArticle BlogPosting ReportageNewsArticle LiveBlogPosting].freeze

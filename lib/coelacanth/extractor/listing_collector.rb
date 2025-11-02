@@ -54,7 +54,7 @@ module Coelacanth
       end
 
       def ancestor?(node, candidate)
-        node.ancestors.any? { |ancestor| ancestor == candidate }
+        Utilities.ancestors(node).any? { |ancestor| ancestor == candidate }
       end
 
       def extract_items(node, base_url)
@@ -85,7 +85,7 @@ module Coelacanth
       end
 
       def candidate_children(node)
-        direct_children = node.children.select(&:element?)
+        direct_children = Utilities.element_children(node)
         groups = %w[li article div section p]
 
         groups.each do |tag|
@@ -120,12 +120,12 @@ module Coelacanth
           return normalize_text(heading.text)
         end
 
-        previous = node.previous_element
+        previous = Utilities.previous_element(node)
         3.times do
           break unless previous
 
           return normalize_text(previous.text) if previous.name =~ /h[1-6]/
-          previous = previous.previous_element
+          previous = Utilities.previous_element(previous)
         end
 
         nil

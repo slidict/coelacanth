@@ -85,7 +85,7 @@ module Coelacanth
         parent = node.parent
         return 0 unless parent
 
-        siblings = parent.children.select(&:element?)
+        siblings = Utilities.element_children(parent)
         return 0 if siblings.length < 2
 
         lengths = siblings.map { |sibling| Utilities.text_length(sibling) }
@@ -107,7 +107,11 @@ module Coelacanth
         siblings = []
         current = node
         loop do
-          current = direction.negative? ? current.previous_element : current.next_element
+          current = if direction.negative?
+                      Utilities.previous_element(current)
+                    else
+                      Utilities.next_element(current)
+                    end
           break unless current
 
           break unless include_in_expansion?(current)

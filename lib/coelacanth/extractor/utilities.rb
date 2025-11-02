@@ -37,7 +37,71 @@ module Coelacanth
       end
 
       def depth(node)
-        node&.ancestors&.length.to_i
+        ancestors(node).length
+      end
+
+      def ancestors(node)
+        return [] unless node
+
+        if node.respond_to?(:ancestors)
+          Array(node.ancestors)
+        else
+          collect_ancestors(node)
+        end
+      end
+
+      def collect_ancestors(node)
+        ancestors = []
+        current = node
+
+        while current.respond_to?(:parent) && (current = current.parent)
+          ancestors << current
+        end
+
+        ancestors
+      end
+
+      def element?(node)
+        return false unless node
+
+        if node.respond_to?(:element?)
+          node.element?
+        elsif defined?(::Oga::XML::Element) && node.is_a?(::Oga::XML::Element)
+          true
+        elsif node.respond_to?(:type)
+          node.type == :element
+        else
+          false
+        end
+      end
+
+      def element_children(node)
+        return [] unless node.respond_to?(:children)
+
+        node.children.select { |child| element?(child) }
+      end
+
+      def sibling_elements(node)
+        parent = node.respond_to?(:parent) ? node.parent : nil
+        return [] unless parent
+
+        element_children(parent)
+      end
+
+      def previous_element(node)
+        siblings = sibling_elements(node)
+        index = siblings.index(node)
+        return unless index && index.positive?
+
+        siblings[index - 1]
+      end
+
+      def next_element(node)
+        siblings = sibling_elements(node)
+        index = siblings.index(node)
+        return unless index
+
+        siblings[index + 1]
       end
 
       def class_id_tokens(node)

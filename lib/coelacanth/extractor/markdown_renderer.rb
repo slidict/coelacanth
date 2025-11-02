@@ -22,16 +22,15 @@ module Coelacanth
       private
 
       def traverse(node, depth = 0)
-        case node.type
-        when :document
+        return if node.nil?
+
+        if document_node?(node)
           node.children.flat_map { |child| traverse(child, depth) }
-        when :element
+        elsif element_node?(node)
           render_element(node, depth)
-        when :text
-          text = node.text.strip
+        elsif text_node?(node)
+          text = node.text.to_s.strip
           text.empty? ? nil : text
-        else
-          nil
         end
       end
 
@@ -46,9 +45,9 @@ module Coelacanth
           heading = "#" * level + " " + inline_children(node, depth)
           [heading, ""]
         when "ul"
-          node.children.select(&:element?).flat_map { |child| render_list_item(child, depth, "-") } + [""]
+          element_children(node).flat_map { |child| render_list_item(child, depth, "-") } + [""]
         when "ol"
-          node.children.select(&:element?).each_with_index.flat_map do |child, index|
+          element_children(node).each_with_index.flat_map do |child, index|
             render_list_item(child, depth, "#{index + 1}.")
           end + [""]
         when "li"
@@ -81,6 +80,48 @@ module Coelacanth
         return [] if text.empty?
 
         ["#{marker} #{text}"]
+      end
+
+      def document_node?(node)
+        return false unless node
+
+        (defined?(::Oga::XML::Document) && node.is_a?(::Oga::XML::Document)) ||
+          (node.respond_to?(:document?) && node.document?) ||
+          (node.respond_to?(:type) && node.type == :document)
+      end
+
+      def element_node?(node)
+        return false unless node
+
+        if node.respond_to?(:element?)
+          node.element?
+        elsif defined?(::Oga::XML::Element) && node.is_a?(::Oga::XML::Element)
+          true
+        elsif node.respond_to?(:type)
+          node.type == :element
+        else
+          false
+        end
+      end
+
+      def text_node?(node)
+        return false unless node
+
+        if node.respond_to?(:text?)
+          node.text?
+        elsif defined?(::Oga::XML::Text) && node.is_a?(::Oga::XML::Text)
+          true
+        elsif node.respond_to?(:type)
+          node.type == :text
+        else
+          false
+        end
+      end
+
+      def element_children(node)
+        return [] unless node.respond_to?(:children)
+
+        node.children.select { |child| element_node?(child) }
       end
     end
   end

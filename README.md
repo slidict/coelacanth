@@ -8,6 +8,11 @@ Coelacanth is a Ruby gem for extracting high-quality article content, metadata, 
 built to power content ingestion pipelines that have to withstand layout experiments, CMS redesigns, and inconsistent markup
 while remaining easy to extend.
 
+It is the successor to [`web_stat`](https://rubygems.org/gems/web_stat) and continues the same goal of reliable article
+extraction under the `slidict` umbrella. Compared to [`web_stat`](https://github.com/slidict/web_stat/) the gem has been
+re-architected with a modern extractor pipeline, built-in screenshot capture, and a clearer configuration story so you can drop
+it into contemporary ingestion stacks without bespoke glue code.
+
 ## Table of contents
 - [Features](#features)
 - [Requirements](#requirements)
@@ -31,6 +36,17 @@ while remaining easy to extend.
   landing page.
 - **Configurable HTTP headers** – Inject custom headers (user agent, authorization, etc.) into the remote browser session for
   authenticated or geo-targeted crawling.
+
+### What's new compared to web_stat?
+
+- **Multi-stage pipeline** – `web_stat` relied on a single-pass heuristic extractor, whereas Coelacanth layers metadata,
+  heuristic, and optional ML probes that graduate based on confidence thresholds.
+- **First-class screenshots** – Capture full-page PNGs alongside the extracted text without writing a separate headless browser
+  integration.
+- **Environment-aware configuration** – Manage remote browser credentials, HTTP headers, and client selection through
+  `config/coelacanth.yml` instead of hand-tuned initializer code.
+- **Markdown-first output** – Get both Markdown and raw DOM representations from `Coelacanth.analyze` so you can publish the
+  same payload to static-site builders, CMS importers, or downstream summarizers.
 
 ## Requirements
 - Ruby **3.4 or newer**

@@ -21,9 +21,13 @@ module Coelacanth
     client_class = config.read("client") == "screenshot_one" ? Client::ScreenshotOne : Client::Ferrum
     @client = client_class.new(url)
     regular_url = Redirect.new.resolve_redirect(url)
+    response = Net::HTTP.get_response(URI.parse(regular_url))
+    html = response.body
+    extractor_result = Extractor.new.call(html: html, url: regular_url)
     {
-      dom: Dom.new.oga(regular_url),
+      dom: Dom.new.oga(regular_url, html: html),
       screenshot: @client.get_screenshot,
+      extraction: extractor_result,
     }
   end
 

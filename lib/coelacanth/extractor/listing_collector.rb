@@ -10,14 +10,6 @@ module Coelacanth
       MIN_ITEMS = 3
       MIN_TITLE_LENGTH = 6
 
-      POSITIVE_TOKENS = %w[news latest new headlines topics pickup digest list updates hot trending feed article posts breaking].freeze
-      POSITIVE_TOKENS_JA = %w[ニュース 新着 最新 注目 速報 トピックス トピック 特集 記事 まとめ].freeze
-      NEGATIVE_TOKENS = %w[footer share comment comments sns tag tags breadcrumb search subscribe login author category categories hero heroimage].freeze
-      NEGATIVE_TOKENS_JA = %w[フッター シェア コメント 関連 検索 メニュー ログイン 会員].freeze
-
-      HEADING_TOKENS = %w[news latest new headlines updates digest].freeze
-      HEADING_TOKENS_JA = %w[新着 最新 速報 ニュース トピックス トピック 注目].freeze
-
       def call(document:, base_url: nil, primary_node: nil)
         candidates = collect_candidates(document, base_url, primary_node)
 
@@ -145,51 +137,71 @@ module Coelacanth
       end
 
       def score_node(node, items, heading)
+        structure_score = structural_score(node)
+        heading_score = heading ? 45 : 0
         item_score = items.length * 40
-        token_score = class_token_score(node)
-        heading_score = heading_bonus(heading)
-        density_score = Utilities.link_density(node) * 100
+        density_score = Utilities.link_density(node) * 90
+        adjacency_score = sibling_sequence_bonus(node)
         depth_penalty = Utilities.depth(node) * 5
         length_penalty = long_text_penalty(node)
 
-        item_score + token_score + heading_score + density_score - depth_penalty - length_penalty
+        structure_score + heading_score + item_score + density_score + adjacency_score - depth_penalty - length_penalty
       end
 
-      def class_token_score(node)
-        tokens = Utilities.class_id_tokens(node)
-        score = 0
+      def structural_score(node)
+        children = candidate_children(node)
+        return 0 if children.empty?
 
-        tokens.each do |token|
-          score += 35 if POSITIVE_TOKENS.include?(token)
-          score -= 50 if NEGATIVE_TOKENS.include?(token)
-        end
+        dominant_tag, dominant_children = children.group_by(&:name).max_by { |_, nodes| nodes.length }
+        dominant_count = dominant_children.length
 
-        POSITIVE_TOKENS_JA.each do |token|
-          score += 35 if node[:class].to_s.include?(token) || node[:id].to_s.include?(token)
-        end
+        uniform_bonus = dominant_count == children.length ? 60 : 20
+        list_bonus = %w[ul ol].include?(node.name) ? 90 : 0
+        list_bonus += 45 if dominant_tag && %w[li].include?(dominant_tag)
 
-        NEGATIVE_TOKENS_JA.each do |token|
-          score -= 50 if node[:class].to_s.include?(token) || node[:id].to_s.include?(token)
-        end
+        distribution_bonus = distribution_consistency_bonus(children)
 
-        score
+        dominant_count * 12 + uniform_bonus + list_bonus + distribution_bonus
       end
 
-      def heading_bonus(heading)
-        return 0 unless heading
+      def distribution_consistency_bonus(children)
+        return 0 if children.length < MIN_ITEMS
 
-        normalized = heading.downcase
-        score = 0
+        lengths = children.map { |child| Utilities.text_length(child) }
+        average = lengths.sum.to_f / lengths.length
+        variance = lengths.map { |len| (len - average).abs }
 
-        HEADING_TOKENS.each do |token|
-          score += 45 if normalized.include?(token)
+        variance.max <= 120 ? 40 : 10
+      end
+
+      def sibling_sequence_bonus(node)
+        siblings = Utilities.sibling_elements(node)
+        return 0 if siblings.empty?
+
+        index = siblings.index(node)
+        return 0 unless index
+
+        forward = 0
+        while (candidate = siblings[index + forward + 1]) && similar_structure?(node, candidate)
+          forward += 1
         end
 
-        HEADING_TOKENS_JA.each do |token|
-          score += 45 if heading.include?(token)
+        backward = 0
+        while index - backward - 1 >= 0 && (candidate = siblings[index - backward - 1]) && similar_structure?(node, candidate)
+          backward += 1
         end
 
-        score
+        (forward + backward) * 15
+      end
+
+      def similar_structure?(node, other)
+        return false unless other
+
+        node_children = candidate_children(node)
+        other_children = candidate_children(other)
+        return false if node_children.empty? || other_children.empty?
+
+        node_children.first.name == other_children.first.name && node_children.length == other_children.length
       end
 
       def long_text_penalty(node)
@@ -201,7 +213,7 @@ module Coelacanth
       end
 
       def minimum_score
-        120
+        180
       end
 
       def format_candidate(candidate)

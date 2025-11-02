@@ -14,13 +14,17 @@ RSpec.describe Coelacanth do
     let(:ferrum_client) { instance_double(Coelacanth::Client::Ferrum) }
     let(:screenshot_one_client) { instance_double(Coelacanth::Client::ScreenshotOne) }
     let(:dom) { instance_double(Coelacanth::Dom) }
+    let(:extractor) { instance_double(Coelacanth::Extractor) }
     let(:config) { instance_double(Coelacanth::Configure) }
     let(:screenshot) { "screenshot_data" }
+    let(:extraction_payload) { { title: "Example", body_markdown: "Body" } }
 
     before do
       allow(Coelacanth).to receive(:config).and_return(config)
       allow(Coelacanth::Dom).to receive(:new).and_return(dom)
-      allow(dom).to receive(:oga).with(url).and_return("parsed_dom")
+      allow(dom).to receive(:oga).with(url, html: "").and_return("parsed_dom")
+      allow(Coelacanth::Extractor).to receive(:new).and_return(extractor)
+      allow(extractor).to receive(:call).with(html: "", url: url).and_return(extraction_payload)
 
       # Stub HTTP requests
       stub_request(:get, "http://example.com/")
@@ -46,7 +50,8 @@ RSpec.describe Coelacanth do
         result = Coelacanth.analyze(url)
         expect(result).to eq({
           dom: "parsed_dom",
-          screenshot: screenshot
+          screenshot: screenshot,
+          extraction: extraction_payload
         })
       end
     end
@@ -62,7 +67,8 @@ RSpec.describe Coelacanth do
         result = Coelacanth.analyze(url)
         expect(result).to eq({
           dom: "parsed_dom",
-          screenshot: screenshot
+          screenshot: screenshot,
+          extraction: extraction_payload
         })
       end
     end

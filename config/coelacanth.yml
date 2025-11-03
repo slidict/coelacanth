@@ -4,10 +4,12 @@ development: &development
     ws_url: "ws://chrome:3000/chrome"
     timeout: 10 # seconds
     headers:
-      Authorization: "Bearer 1234567890"
-      User-Agent: "Coelacanth Chrome Extension"
+<% if (auth = ENV["COELACANTH_REMOTE_CLIENT_AUTHORIZATION"]).to_s.strip != "" %>
+      Authorization: "<%= auth %>"
+<% end %>
+      User-Agent: "<%= ENV.fetch("COELACANTH_REMOTE_CLIENT_USER_AGENT", "Coelacanth Chrome Extension") %>"
   screenshot_one:
-    key: "your_screenshot_one_api_key_here"
+    key: "<%= ENV.fetch("COELACANTH_SCREENSHOT_ONE_API_KEY", "your_screenshot_one_api_key_here") %>"
 test:
   <<: *development
 production:

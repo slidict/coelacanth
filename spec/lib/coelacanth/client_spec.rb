@@ -11,5 +11,13 @@ RSpec.describe Coelacanth::Client::Ferrum do
         timeout: 10
       }
     end
+
+    context "when the optional authorization header is absent" do
+      it_behaves_like "a remote client", {
+        headers: { "User-Agent" => "Coelacanth Chrome Extension" },
+        ws_url: "ws://chrome:3000/chrome",
+        timeout: 10
+      }
+    end
   end
 end

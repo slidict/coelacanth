@@ -126,7 +126,10 @@ module Coelacanth
     def normalize_path(uri)
       path = uri.path
       path = "/" if path.nil? || path.empty?
-      path
+      query = uri.query
+      return path if query.nil? || query.empty?
+
+      "#{path}?#{query}"
     end
 
     def normalize_agent(agent)

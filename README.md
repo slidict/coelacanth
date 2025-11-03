@@ -115,10 +115,12 @@ development:
     ws_url: "ws://chrome:3000/chrome"
     timeout: 10
     headers:
-      Authorization: "Bearer 1234567890"
-      User-Agent: "Coelacanth Chrome Extension"
+<% if (auth = ENV["COELACANTH_REMOTE_CLIENT_AUTHORIZATION"]).to_s.strip != "" %>
+      Authorization: "<%= auth %>"
+<% end %>
+      User-Agent: "<%= ENV.fetch("COELACANTH_REMOTE_CLIENT_USER_AGENT", "Coelacanth Chrome Extension") %>"
   screenshot_one:
-    key: "your_screenshot_one_api_key_here"
+    key: "<%= ENV.fetch("COELACANTH_SCREENSHOT_ONE_API_KEY", "your_screenshot_one_api_key_here") %>"
 ```
 
 - **Ferrum client** – Requires a running Chrome instance that exposes the DevTools protocol via WebSocket. Configure the URL,
@@ -126,6 +128,25 @@ development:
 - **ScreenshotOne client** – Supply an API key to offload screenshot capture to [ScreenshotOne](https://screenshotone.com/).
 - Configuration is environment-aware: set `RAILS_ENV`/`RACK_ENV` or use Rails' built-in environment handling when the gem is
   used inside a Rails project.
+
+### Environment variables
+
+Configuration values that would otherwise contain credentials are loaded from environment variables. Set the following
+variables in your shell (or `dotenv` file) before running the gem:
+
+```bash
+# Optional: only set when the remote browser requires authentication.
+export COELACANTH_REMOTE_CLIENT_AUTHORIZATION="Bearer <token>"
+
+export COELACANTH_REMOTE_CLIENT_USER_AGENT="Coelacanth Chrome Extension"
+export COELACANTH_SCREENSHOT_ONE_API_KEY="your_screenshot_one_api_key_here"
+```
+
+If `COELACANTH_REMOTE_CLIENT_AUTHORIZATION` is omitted or left blank, the `Authorization` header is not injected into the
+remote browser session.
+
+When using Docker Compose, you can create a `.env` file or export the variables in your environment so the `app` service picks
+them up automatically.
 
 If you are working inside Docker, make sure the `UID` environment variable matches your host user by exporting it in your shell
 startup file:

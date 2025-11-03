@@ -41,6 +41,7 @@ RSpec.shared_examples "a remote client" do |config_values|
   let(:headers) { instance_double("Headers") }
 
   before do
+    allow(Coelacanth).to receive(:config).and_return(config)
     allow(config).to receive(:root).and_return(Pathname.new("/path/to"))
     allow(config).to receive(:read).with("remote_client.headers").and_return(config_values[:headers])
     allow(config).to receive(:read).with("remote_client.ws_url").and_return(config_values[:ws_url])
@@ -53,11 +54,16 @@ RSpec.shared_examples "a remote client" do |config_values|
     allow(browser).to receive(:page).and_return(page)
     allow(browser).to receive(:goto).with('http://example.com') # ← これ！
     allow(page).to receive(:headers).and_return(headers)
-    allow(headers).to receive(:set).with(config_values[:headers]) if config_values[:headers]
+    allow(headers).to receive(:set)
   end
 
   it "creates a remote client with the correct headers" do
     expect(client.send(:remote_client)).to eq(browser)
-    expect(headers).to have_received(:set).with(config_values[:headers]) unless config_values[:headers].nil?
+
+    if config_values[:headers].nil?
+      expect(headers).not_to have_received(:set)
+    else
+      expect(headers).to have_received(:set).with(config_values[:headers])
+    end
   end
 end

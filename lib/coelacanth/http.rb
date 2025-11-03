@@ -4,6 +4,8 @@ require "net/http"
 require "open-uri"
 require "timeout"
 
+require_relative "robots"
+
 module Coelacanth
   class TimeoutError < StandardError; end unless const_defined?(:TimeoutError)
 
@@ -23,6 +25,11 @@ module Coelacanth
     module_function
 
     def get_response(uri, open_timeout: DEFAULT_OPEN_TIMEOUT, read_timeout: DEFAULT_READ_TIMEOUT, retries: MAX_RETRIES)
+      ensure_allowed!(uri)
+      raw_get_response(uri, open_timeout: open_timeout, read_timeout: read_timeout, retries: retries)
+    end
+
+    def raw_get_response(uri, open_timeout: DEFAULT_OPEN_TIMEOUT, read_timeout: DEFAULT_READ_TIMEOUT, retries: MAX_RETRIES)
       attempts = 0
       begin
         attempts += 1
@@ -41,6 +48,13 @@ module Coelacanth
 
         raise Coelacanth::TimeoutError, "GET #{uri} timed out after #{attempts} attempts: #{e.message}"
       end
+    end
+
+    def ensure_allowed!(uri)
+      return if Coelacanth::Robots.allowed?(uri)
+
+      raise Coelacanth::RobotsDisallowedError,
+            "Access to #{uri} is disallowed by robots.txt for user-agent '#{Coelacanth::Robots.user_agent}'"
     end
 
     def raise_http_error(uri, response)

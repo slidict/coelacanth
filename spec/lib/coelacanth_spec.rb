@@ -16,52 +16,24 @@ RSpec.describe Coelacanth do
     let(:dom) { instance_double(Coelacanth::Dom) }
     let(:extractor) { instance_double(Coelacanth::Extractor) }
     let(:config) { instance_double(Coelacanth::Configure) }
+    let(:redirector) { instance_double(Coelacanth::Redirect, resolve_redirect: url) }
     let(:screenshot) { "screenshot_data" }
     let(:extraction_payload) { { title: "Example", body_markdown: "Body", body_markdown_list: ["Body"] } }
     let(:utf8_html) { "<html><body>デジタル庁のテスト</body></html>" }
     let(:binary_html) { utf8_html.dup.force_encoding(Encoding::ASCII_8BIT) }
+    let(:http_response) { instance_double(Net::HTTPSuccess, body: binary_html, code: "200") }
 
     before do
       allow(Coelacanth).to receive(:config).and_return(config)
       allow(Coelacanth::Dom).to receive(:new).and_return(dom)
       allow(Coelacanth::Extractor).to receive(:new).and_return(extractor)
-
-      allow(dom).to receive(:oga) do |passed_url, html:|
-        expect(passed_url).to eq(url)
-        expect(html.encoding).to eq(Encoding::UTF_8)
-        expect(html).to eq(utf8_html)
-        "parsed_dom"
-      end
-
-      allow(extractor).to receive(:call) do |**args|
-        expect(args[:html].encoding).to eq(Encoding::UTF_8)
-        expect(args[:html]).to eq(utf8_html)
-        expect(args[:url]).to eq(url)
-        extraction_payload
-      end
-
-      # Stub HTTP requests
-      stub_request(:get, "http://example.com/")
-        .with(
-          headers: {
-            'Accept' => '*/*',
-            'Accept-Encoding' => 'gzip;q=1.0,deflate;q=0.6,identity;q=0.3',
-            'Host' => 'example.com',
-            'User-Agent' => 'Ruby'
-          }
-        )
-        .to_return(status: 200, body: binary_html, headers: {})
+      allow(Coelacanth::Redirect).to receive(:new).and_return(redirector)
     end
 
-    context "when client is ferrum" do
-      before do
-        allow(config).to receive(:read).with("client").and_return("ferrum")
-        allow(Coelacanth::Client::Ferrum).to receive(:new).with(url).and_return(ferrum_client)
-        allow(ferrum_client).to receive(:get_screenshot).and_return(screenshot)
-      end
-
-      it "uses Ferrum client and returns the expected result" do
+    shared_examples "analyze workflow" do
+      it "returns the expected payload" do
         result = Coelacanth.analyze(url)
+
         expect(result).to eq({
           dom: "parsed_dom",
           screenshot: screenshot,
@@ -70,15 +42,59 @@ RSpec.describe Coelacanth do
       end
     end
 
-    context "when client is screenshot_one" do
+    context "when the HTTP request succeeds" do
       before do
-        allow(config).to receive(:read).with("client").and_return("screenshot_one")
-        allow(Coelacanth::Client::ScreenshotOne).to receive(:new).with(url).and_return(screenshot_one_client)
-        allow(screenshot_one_client).to receive(:get_screenshot).and_return(screenshot)
+        allow(Coelacanth::HTTP).to receive(:get_response).and_return(http_response)
+
+        allow(dom).to receive(:oga) do |passed_url, html:|
+          expect(passed_url).to eq(url)
+          expect(html.encoding).to eq(Encoding::UTF_8)
+          expect(html).to eq(utf8_html)
+          "parsed_dom"
+        end
+
+        allow(extractor).to receive(:call) do |**args|
+          expect(args[:html].encoding).to eq(Encoding::UTF_8)
+          expect(args[:html]).to eq(utf8_html)
+          expect(args[:url]).to eq(url)
+          extraction_payload
+        end
       end
 
-      it "uses ScreenshotOne client and returns the expected result" do
+      context "when client is ferrum" do
+        before do
+          allow(config).to receive(:read).with("client").and_return("ferrum")
+          allow(Coelacanth::Client::Ferrum).to receive(:new).with(url).and_return(ferrum_client)
+          allow(ferrum_client).to receive(:get_screenshot).and_return(screenshot)
+        end
+
+        include_examples "analyze workflow"
+      end
+
+      context "when client is screenshot_one" do
+        before do
+          allow(config).to receive(:read).with("client").and_return("screenshot_one")
+          allow(Coelacanth::Client::ScreenshotOne).to receive(:new).with(url).and_return(screenshot_one_client)
+          allow(screenshot_one_client).to receive(:get_screenshot).and_return(screenshot)
+        end
+
+        include_examples "analyze workflow"
+      end
+    end
+
+    context "when the HTTP request times out" do
+      before do
+        allow(Coelacanth::HTTP).to receive(:get_response).and_raise(Coelacanth::TimeoutError, "timeout")
+        allow(config).to receive(:read).with("client").and_return("ferrum")
+        allow(Coelacanth::Client::Ferrum).to receive(:new).with(url).and_return(ferrum_client)
+        allow(ferrum_client).to receive(:get_screenshot).and_return(screenshot)
+        allow(dom).to receive(:oga).with(url, html: "").and_return("parsed_dom")
+        allow(extractor).to receive(:call).with(html: "", url: url).and_return(extraction_payload)
+      end
+
+      it "continues with empty HTML" do
         result = Coelacanth.analyze(url)
+
         expect(result).to eq({
           dom: "parsed_dom",
           screenshot: screenshot,

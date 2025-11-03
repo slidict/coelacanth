@@ -2,6 +2,7 @@
 
 require "ferrum"
 require "oga"
+require_relative "http"
 
 module Coelacanth
   # Coelacanth::Redirect
@@ -11,11 +12,15 @@ module Coelacanth
       raise Coelacanth::DeepRedirectError, "Too many redirect" if limit.zero?
       raise Coelacanth::RedirectError, "Url or location is nil" if @url.nil?
 
-      response = Net::HTTP.get_response(URI.parse(@url))
+      response = Coelacanth::HTTP.get_response(URI.parse(@url))
       @status_code = response.code
       @origin_response = response
 
       handle_response(@origin_response, limit)
+    rescue Coelacanth::TimeoutError
+      @status_code = nil
+      @origin_response = nil
+      @url
     end
 
     private

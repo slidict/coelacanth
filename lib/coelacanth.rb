@@ -18,6 +18,7 @@ module Coelacanth
   class RedirectError < StandardError; end
   class DeepRedirectError < StandardError; end
   class TimeoutError < StandardError; end
+  class RobotsDisallowedError < StandardError; end
 
   def self.analyze(url)
     client_class = config.read("client") == "screenshot_one" ? Client::ScreenshotOne : Client::Ferrum

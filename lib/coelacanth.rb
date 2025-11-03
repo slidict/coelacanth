@@ -7,6 +7,7 @@ require_relative "coelacanth/client/ferrum"
 require_relative "coelacanth/client/screenshot_one"
 require_relative "coelacanth/dom"
 require_relative "coelacanth/extractor"
+require_relative "coelacanth/http"
 require_relative "coelacanth/redirect"
 require_relative "coelacanth/validator"
 require_relative "coelacanth/version"
@@ -16,13 +17,19 @@ module Coelacanth
   class Error < StandardError; end
   class RedirectError < StandardError; end
   class DeepRedirectError < StandardError; end
+  class TimeoutError < StandardError; end
 
   def self.analyze(url)
     client_class = config.read("client") == "screenshot_one" ? Client::ScreenshotOne : Client::Ferrum
     @client = client_class.new(url)
     regular_url = Redirect.new.resolve_redirect(url)
-    response = Net::HTTP.get_response(URI.parse(regular_url))
-    html = response.body.to_s
+    response = begin
+      Coelacanth::HTTP.get_response(URI.parse(regular_url))
+    rescue Coelacanth::TimeoutError
+      nil
+    end
+    html = response&.body.to_s
+    html = html.dup
     html = html.force_encoding(Encoding::UTF_8)
     html = html.encode(Encoding::UTF_8, invalid: :replace, undef: :replace)
     extractor_result = Extractor.new.call(html: html, url: regular_url)

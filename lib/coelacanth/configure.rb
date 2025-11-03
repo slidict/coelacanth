@@ -15,7 +15,12 @@ module Coelacanth
     end
 
     def yaml
-      @yaml ||= YAML.unsafe_load(ERB.new(File.read(file)).result)[env]
+      @yaml ||= YAML.safe_load(
+        ERB.new(File.read(file)).result,
+        permitted_classes: [],
+        permitted_symbols: [],
+        aliases: true
+      )[env]
     end
 
     private

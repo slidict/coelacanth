@@ -110,32 +110,25 @@ RSpec.describe Coelacanth::Extractor do
   end
 
   describe "listing extraction" do
-    let(:html) do
-      <<~HTML
+    it "extracts listings from body markdown" do
+      html = <<~HTML
         <html>
-          <head>
-            <title>Article with sidebar</title>
-          </head>
           <body>
             <article>
               <h1>Primary headline</h1>
               <p>Article body paragraph one.</p>
               <p>Article body paragraph two.</p>
-            </article>
-            <aside class="latest-news">
               <h2>Latest news</h2>
               <ul>
-                <li><a href="/news/1">Breaking: Major announcement</a><span>Company A unveils a new product</span></li>
-                <li><a href="/news/2">Update: Market recap</a><span>Indexes closed higher across the board</span></li>
-                <li><a href="/news/3">New: Technology spotlight</a><span>Analysts unpack the latest AI research</span></li>
+                <li><a href="/news/1">Breaking: Major announcement</a> – Company A unveils a new product</li>
+                <li><a href="/news/2">Update: Market recap</a> – Indexes closed higher across the board</li>
+                <li><a href="/news/3">New: Technology spotlight</a> – Analysts unpack the latest AI research</li>
               </ul>
-            </aside>
+            </article>
           </body>
         </html>
       HTML
-    end
 
-    it "returns sidebar listings" do
       result = extractor.call(html: html, url: "https://example.com/articles/1")
 
       expect(result[:listings]).to contain_exactly(
@@ -162,53 +155,26 @@ RSpec.describe Coelacanth::Extractor do
       )
     end
 
-    it "detects definition list style listings" do
+    it "ignores lists with fewer than three items" do
       html = <<~HTML
         <html>
           <body>
             <article>
               <h1>デジタル庁テスト</h1>
               <p>本文です。</p>
+              <h2>関連リンク</h2>
+              <ul>
+                <li><a href="/news/10">デジタル庁の最新発表</a></li>
+                <li><a href="/news/11">マイナンバー関連の更新</a></li>
+              </ul>
             </article>
-            <aside class="p-news">
-              <h2>新着情報</h2>
-              <dl class="p-news__list">
-                <dt><time datetime="2024-04-01">2024.04.01</time></dt>
-                <dd><a href="/news/10">デジタル庁の最新発表</a></dd>
-                <dt><time datetime="2024-03-28">2024.03.28</time></dt>
-                <dd><a href="/news/11">マイナンバー関連の更新</a></dd>
-                <dt><time datetime="2024-03-18">2024.03.18</time></dt>
-                <dd><a href="/news/12">GovTech イベントのお知らせ</a></dd>
-              </dl>
-            </aside>
           </body>
         </html>
       HTML
 
       result = extractor.call(html: html, url: "https://www.digital.go.jp/")
 
-      expect(result[:listings]).to include(
-        {
-          heading: "新着情報",
-          items: [
-            {
-              title: "デジタル庁の最新発表",
-              url: "https://www.digital.go.jp/news/10",
-              snippet: "2024.04.01"
-            },
-            {
-              title: "マイナンバー関連の更新",
-              url: "https://www.digital.go.jp/news/11",
-              snippet: "2024.03.28"
-            },
-            {
-              title: "GovTech イベントのお知らせ",
-              url: "https://www.digital.go.jp/news/12",
-              snippet: "2024.03.18"
-            }
-          ]
-        }
-      )
+      expect(result[:listings]).to eq([])
     end
   end
 end

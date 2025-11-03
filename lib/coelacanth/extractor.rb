@@ -7,7 +7,7 @@ require_relative "extractor/weak_ml_probe"
 require_relative "extractor/fallback_probe"
 require_relative "extractor/markdown_renderer"
 require_relative "extractor/image_collector"
-require_relative "extractor/listing_collector"
+require_relative "extractor/markdown_listing_collector"
 
 module Coelacanth
   # High-level API for extracting articles without site-specific selectors.
@@ -60,7 +60,7 @@ module Coelacanth
         byline: result.byline,
         source: result.source_tag,
         confidence: result.confidence,
-        listings: ListingCollector.new.call(document: document, base_url: url, primary_node: node)
+        listings: MarkdownListingCollector.new.call(markdown: body_markdown, base_url: url)
       }
     end
   end

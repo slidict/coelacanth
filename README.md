@@ -102,8 +102,8 @@ Coelacanth ships with a multi-stage extractor that tries increasingly involved p
 4. **FallbackProbe** acts as a safety net by following AMP/print links or summarizing the whole document when the previous
    probes fail.
 
-A `ListingCollector` scans nearby layout regions to surface structured listings (e.g., sidebar "latest news" blocks) so you can
-store related links alongside the article.
+Markdown-based listings are generated from the extracted body so lists such as "Latest news" blocks can be stored alongside the
+article without scanning the rest of the page layout.
 
 ## Configuration
 Runtime configuration is stored in `config/coelacanth.yml`. Environments inherit from the `development` section by default.

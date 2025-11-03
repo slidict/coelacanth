@@ -52,6 +52,10 @@ module Coelacanth
           end + [""]
         when "li"
           ["- #{inline_children(node, depth)}"]
+        when "a"
+          href = node["href"].to_s.strip
+          text = inline_children(node, depth)
+          href.empty? ? text : "[#{text}](#{href})"
         when "strong", "b"
           "**#{inline_children(node, depth)}**"
         when "em", "i"

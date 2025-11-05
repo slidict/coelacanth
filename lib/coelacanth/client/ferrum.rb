@@ -12,7 +12,7 @@ module Coelacanth::Client
 
     def get_response(url = nil)
       @status_code = remote_client.network.status
-      remote_client.network.wait_for_idle! # might raise an error
+      wait_for_network_idle
       body = remote_client.body
       body
     rescue => e
@@ -21,7 +21,7 @@ module Coelacanth::Client
 
     def get_screenshot
       tempfile = Tempfile.new
-      remote_client.network.wait_for_idle! # まずJSの完了を待つ
+      wait_for_network_idle
       remote_client.screenshot(path: tempfile.path, format: "png")
       File.read(tempfile.path)
     rescue => e
@@ -40,6 +40,27 @@ module Coelacanth::Client
 
       "#{@remote_client.class.name}(object_id=#{@remote_client.object_id})"
     end
+
+    def wait_for_network_idle
+      timeout = wait_for_idle_timeout
+
+      if timeout
+        remote_client.network.wait_for_idle!(timeout: timeout)
+      else
+        remote_client.network.wait_for_idle!
+      end
+    rescue ::Ferrum::TimeoutError
+      nil
+    end
+
+    def wait_for_idle_timeout
+      timeout = @config.read("remote_client.wait_for_idle_timeout")
+      return timeout if timeout
+
+      DEFAULT_WAIT_FOR_IDLE_TIMEOUT
+    end
+
+    DEFAULT_WAIT_FOR_IDLE_TIMEOUT = 5
 
     def remote_client
       return @remote_client if @remote_client

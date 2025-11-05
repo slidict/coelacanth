@@ -3,6 +3,7 @@ development: &development
   remote_client:
     ws_url: "ws://chrome:3000/chrome"
     timeout: 10 # seconds
+    wait_for_idle_timeout: 5 # seconds to wait before giving up on network idle
     headers:
 <% if (auth = ENV["COELACANTH_REMOTE_CLIENT_AUTHORIZATION"]).to_s.strip != "" %>
       Authorization: "<%= auth %>"

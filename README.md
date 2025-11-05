@@ -114,6 +114,7 @@ development:
   remote_client:
     ws_url: "ws://chrome:3000/chrome"
     timeout: 10
+    wait_for_idle_timeout: 5
     headers:
 <% if (auth = ENV["COELACANTH_REMOTE_CLIENT_AUTHORIZATION"]).to_s.strip != "" %>
       Authorization: "<%= auth %>"
@@ -124,7 +125,7 @@ development:
 ```
 
 - **Ferrum client** – Requires a running Chrome instance that exposes the DevTools protocol via WebSocket. Configure the URL,
-  timeout, and any headers to inject.
+  timeout, the network idle timeout, and any headers to inject.
 - **ScreenshotOne client** – Supply an API key to offload screenshot capture to [ScreenshotOne](https://screenshotone.com/).
 - Configuration is environment-aware: set `RAILS_ENV`/`RACK_ENV` or use Rails' built-in environment handling when the gem is
   used inside a Rails project.

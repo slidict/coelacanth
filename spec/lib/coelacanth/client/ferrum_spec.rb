@@ -10,6 +10,7 @@ RSpec.describe Coelacanth::Client::Ferrum do
           "remote_client.headers" => nil,
           "remote_client.ws_url" => "ws://example.test/devtools/browser/SECRET",
           "remote_client.timeout" => 5,
+          "remote_client.wait_for_idle_timeout" => 5,
           "client" => "ferrum"
         }[key]
       end
@@ -36,6 +37,12 @@ RSpec.describe Coelacanth::Client::Ferrum do
   let(:client) { described_class.new(url) }
 
   describe "#get_response" do
+    it "returns the response body even when waiting for idle times out" do
+      expect(network).to receive(:wait_for_idle!).with(timeout: 5).and_raise(::Ferrum::TimeoutError)
+
+      expect(client.get_response).to eq("<html></html>")
+    end
+
     it "raises an error with sanitized remote client information" do
       allow(network).to receive(:wait_for_idle!).and_raise(StandardError, "wait failed")
 
@@ -49,6 +56,18 @@ RSpec.describe Coelacanth::Client::Ferrum do
   end
 
   describe "#get_screenshot" do
+    it "still captures a screenshot when waiting for idle times out" do
+      expect(network).to receive(:wait_for_idle!).with(timeout: 5).and_raise(::Ferrum::TimeoutError)
+
+      tempfile = instance_double(Tempfile, path: "/tmp/screenshot.png")
+      allow(Tempfile).to receive(:new).and_return(tempfile)
+      allow(File).to receive(:read).with("/tmp/screenshot.png").and_return("image-bytes")
+      allow(tempfile).to receive(:close)
+      allow(browser).to receive(:screenshot)
+
+      expect(client.get_screenshot).to eq("image-bytes")
+    end
+
     it "raises an error with sanitized remote client information" do
       allow(network).to receive(:wait_for_idle!).and_raise(StandardError, "wait failed")
 

@@ -28,7 +28,7 @@ module Coelacanth
         { selector: "link[rel='image_src']", attribute: "href", score: 95 }
       ].freeze
 
-      JSON_LD_IMAGE_KEYS = %w[image imageUrl imageURL thumbnail thumbnailUrl thumbnailURL contentUrl contentURL url].freeze
+      JSON_LD_IMAGE_KEYS = %w[image imageUrl imageURL thumbnail thumbnailUrl thumbnailURL contentUrl contentURL].freeze
 
       LAZY_SOURCE_ATTRIBUTES = %w[data-src data-original data-lazy-src data-lazy data-url data-image data-preview src].freeze
 

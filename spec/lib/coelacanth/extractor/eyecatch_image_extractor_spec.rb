@@ -45,45 +45,76 @@ RSpec.describe Coelacanth::Extractor::EyecatchImageExtractor do
   end
 
   describe "structured data fallback" do
-    let(:html) do
-      <<~HTML
-        <html>
-          <head>
-            <script type="application/ld+json">
-              {
-                "@context": "https://schema.org",
-                "@type": "NewsArticle",
-                "image": {
-                  "@type": "ImageObject",
-                  "url": "https://example.net/assets/json-ld-image.jpg"
+    context "when structured data references an ImageObject" do
+      let(:html) do
+        <<~HTML
+          <html>
+            <head>
+              <script type="application/ld+json">
+                {
+                  "@context": "https://schema.org",
+                  "@type": "NewsArticle",
+                  "image": {
+                    "@type": "ImageObject",
+                    "url": "https://example.net/assets/json-ld-image.jpg"
+                  }
                 }
-              }
-            </script>
-          </head>
-          <body>
-            <article>
-              <p>Content</p>
-            </article>
-          </body>
-        </html>
-      HTML
+              </script>
+            </head>
+            <body>
+              <article>
+                <p>Content</p>
+              </article>
+            </body>
+          </html>
+        HTML
+      end
+
+      it "uses images referenced in JSON-LD when metadata is missing" do
+        stub_request(:get, "https://example.net/assets/json-ld-image.jpg").to_return(
+          status: 200,
+          body: "JSONLDDATA",
+          headers: { "Content-Type" => "image/jpeg" }
+        )
+
+        result = extractor.call(doc: document, base_url: "https://example.net/story")
+
+        expect(result).to be_a(described_class::Result)
+        expect(result.url).to eq("https://example.net/assets/json-ld-image.jpg")
+        expect(File.extname(result.path)).to eq(".jpg")
+        expect(File.binread(result.path)).to eq("JSONLDDATA")
+      ensure
+        FileUtils.rm_rf(File.dirname(result.path)) if result&.path && File.exist?(result.path)
+      end
     end
 
-    it "uses images referenced in JSON-LD when metadata is missing" do
-      stub_request(:get, "https://example.net/assets/json-ld-image.jpg").to_return(
-        status: 200,
-        body: "JSONLDDATA",
-        headers: { "Content-Type" => "image/jpeg" }
-      )
+    context "when structured data only describes the page" do
+      let(:html) do
+        <<~HTML
+          <html>
+            <head>
+              <script type="application/ld+json">
+                {
+                  "@context": "https://schema.org",
+                  "@type": "NewsArticle",
+                  "url": "https://example.net/story"
+                }
+              </script>
+            </head>
+            <body>
+              <article>
+                <p>Content</p>
+              </article>
+            </body>
+          </html>
+        HTML
+      end
 
-      result = extractor.call(doc: document, base_url: "https://example.net/story")
+      it "ignores generic url fields" do
+        result = extractor.call(doc: document, base_url: "https://example.net/story")
 
-      expect(result).to be_a(described_class::Result)
-      expect(result.url).to eq("https://example.net/assets/json-ld-image.jpg")
-      expect(File.extname(result.path)).to eq(".jpg")
-      expect(File.binread(result.path)).to eq("JSONLDDATA")
-    ensure
-      FileUtils.rm_rf(File.dirname(result.path)) if result&.path && File.exist?(result.path)
+        expect(result).to be_nil
+      end
     end
   end
 

@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require "spec_helper"
+require "json"
 
 RSpec.describe Coelacanth::Extractor do
   subject(:extractor) { described_class.new }
@@ -106,6 +107,68 @@ RSpec.describe Coelacanth::Extractor do
       expect(result[:body_markdown_list]).to include("Machine learning fallback body.")
       expect(result[:confidence]).to be >= 0.45
       expect(result[:listings]).to eq([])
+    end
+  end
+
+  describe "YouTube preprocessing" do
+    let(:youtube_html) do
+      <<~HTML
+        <html>
+          <body>
+            <article>
+              <p>Original YouTube body.</p>
+            </article>
+          </body>
+        </html>
+      HTML
+    end
+
+    let(:youtube_url) { "https://www.youtube.com/watch?v=example123" }
+    let(:config_double) { instance_double(Coelacanth::Configure) }
+
+    before do
+      allow(Coelacanth).to receive(:config).and_return(config_double)
+    end
+
+    it "replaces the document with YouTube API data when configured" do
+      api_response_body = {
+        "items" => [
+          {
+            "snippet" => {
+              "title" => "Sample Video",
+              "description" => "First paragraph.\n\nSecond line one\nSecond line two.",
+              "publishedAt" => "2024-04-05T09:30:00Z",
+              "thumbnails" => {
+                "high" => { "url" => "https://img.youtube.com/sample/high.jpg" }
+              }
+            }
+          }
+        ]
+      }.to_json
+
+      response = instance_double(Net::HTTPOK, body: api_response_body)
+      allow(response).to receive(:is_a?).with(Net::HTTPSuccess).and_return(true)
+
+      allow(config_double).to receive(:read).with("youtube.api_key").and_return("test_api_key")
+      allow(Coelacanth::HTTP).to receive(:raw_get_response).and_return(response)
+
+      result = extractor.call(html: youtube_html, url: youtube_url)
+
+      expect(result[:title]).to eq("Sample Video")
+      expect(result[:published_at]).to eq(Time.utc(2024, 4, 5, 9, 30, 0))
+      expect(result[:source]).to eq(:jsonld)
+      expect(result[:body_markdown]).to include("First paragraph.")
+      expect(result[:body_markdown]).to include("Second line one")
+      expect(result[:images]).to include(include(src: "https://img.youtube.com/sample/high.jpg"))
+    end
+
+    it "falls back to the original HTML when the API key is missing" do
+      allow(config_double).to receive(:read).with("youtube.api_key").and_return("")
+      expect(Coelacanth::HTTP).not_to receive(:raw_get_response)
+
+      result = extractor.call(html: youtube_html, url: youtube_url)
+
+      expect(result[:body_markdown]).to include("Original YouTube body.")
     end
   end
 

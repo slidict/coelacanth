@@ -39,6 +39,7 @@ RSpec.describe Coelacanth::Extractor do
       expect(result[:body_markdown]).to include("Structured article body")
       expect(result[:body_markdown_list]).to eq(["Structured article body."])
       expect(result[:listings]).to eq([])
+      expect(result).to include(:eyecatch_image)
     end
   end
 

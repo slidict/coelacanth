@@ -127,8 +127,15 @@ development:
 - **Ferrum client** – Requires a running Chrome instance that exposes the DevTools protocol via WebSocket. Configure the URL,
   timeout, the network idle timeout, and any headers to inject.
 - **ScreenshotOne client** – Supply an API key to offload screenshot capture to [ScreenshotOne](https://screenshotone.com/).
+- **Eyecatch image extraction** – Representative images are discovered automatically by checking Open Graph/Twitter metadata,
+  Schema.org JSON-LD payloads, and high-signal `<img>` elements (hero/cover images, large dimensions, etc.). No manual XPath
+  maintenance is required.
 - Configuration is environment-aware: set `RAILS_ENV`/`RACK_ENV` or use Rails' built-in environment handling when the gem is
   used inside a Rails project.
+
+Representative images are downloaded into a temporary directory using the built-in HTTP client. The extractor returns both the
+resolved URL and the local file path via `extraction[:eyecatch_image]`. Remember to move or delete the file once you have
+persisted it—temporary directories are not automatically cleaned up for long-running processes.
 
 ### Environment variables
 

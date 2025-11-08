@@ -11,6 +11,7 @@ require_relative "extractor/image_collector"
 require_relative "extractor/markdown_listing_collector"
 require_relative "extractor/eyecatch_image_extractor"
 require_relative "extractor/morphological_analyzer"
+require_relative "extractor/utilities"
 
 module Coelacanth
   # High-level API for extracting articles without site-specific selectors.
@@ -25,7 +26,7 @@ module Coelacanth
       keyword_init: true
     )
 
-    def call(html:, url: nil)
+    def call(html:, url: nil, response_metadata: nil)
       preprocessed_html = Preprocessor.new.call(html: html, url: url)
       document = Normalizer.new.call(html: preprocessed_html, base_url: url)
 
@@ -38,23 +39,27 @@ module Coelacanth
         result = probe.call(doc: document, url: url)
         next unless result
 
-        return build_response(result, document:, url:) if result.confidence.to_f >= threshold
+        return build_response(result, document:, url:, response_metadata: response_metadata) if result.confidence.to_f >= threshold
       end
 
       build_response(
         PipelineResult.new(node: document, source_tag: :none, confidence: 0.0),
         document: document,
-        url: url
+        url: url,
+        response_metadata: response_metadata
       )
     end
 
     private
 
-    def build_response(result, document:, url:)
+    def build_response(result, document:, url:, response_metadata:)
       node = result.node
       body_markdown = MarkdownRenderer.render(node)
       body_markdown_list = body_markdown.to_s.split(/\n{2,}/).map { |segment| segment.strip }.reject(&:empty?)
       morpheme_features = MorphologicalAnalyzer.new.call(markdown: body_markdown)
+
+      site_name = extract_site_name(document)
+      body_text = extract_body_text(node)
 
       {
         title: result.title,
@@ -67,8 +72,27 @@ module Coelacanth
         byline: result.byline,
         source: result.source_tag,
         confidence: result.confidence,
-        listings: MarkdownListingCollector.new.call(markdown: body_markdown, base_url: url)
+        listings: MarkdownListingCollector.new.call(markdown: body_markdown, base_url: url),
+        site_name: site_name,
+        body_text: body_text,
+        response_metadata: response_metadata || {}
       }
+    end
+
+    def extract_site_name(document)
+      Utilities.meta_content(
+        document,
+        "meta[property='og:site_name']",
+        "meta[name='application-name']",
+        "meta[name='apple-mobile-web-app-title']",
+        "meta[name='twitter:site']"
+      ) || document.at_css("title")&.text&.strip
+    end
+
+    def extract_body_text(node)
+      return if node.nil?
+
+      node.text.to_s.gsub(/\s+/, " ").strip
     end
   end
 end

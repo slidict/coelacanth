@@ -29,15 +29,21 @@ module Coelacanth
     rescue Coelacanth::TimeoutError
       nil
     end
+    response_metadata = {
+      status_code: response&.status_code,
+      headers: response&.headers || {},
+      final_url: response&.final_url || regular_url
+    }
     html = response&.body.to_s
     html = html.dup
     html = html.force_encoding(Encoding::UTF_8)
     html = html.encode(Encoding::UTF_8, invalid: :replace, undef: :replace)
-    extractor_result = Extractor.new.call(html: html, url: regular_url)
+    extractor_result = Extractor.new.call(html: html, url: regular_url, response_metadata: response_metadata)
     {
       dom: Dom.new.oga(regular_url, html: html),
       screenshot: @client.get_screenshot,
       extraction: extractor_result,
+      response: response_metadata
     }
   end
 

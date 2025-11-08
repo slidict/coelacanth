@@ -25,6 +25,13 @@ RSpec.describe Coelacanth::Extractor::MorphologicalAnalyzer do
     expect(scores).to eq(scores.sort.reverse)
   end
 
+  it "supports direct text input" do
+    result = analyzer.call_text("これはテストです。これはサンプルです。 Testing morphology twice.")
+
+    expect(result).to all(include(:token, :score, :count))
+    expect(result.map { |entry| entry[:token] }).to include("テスト", "サンプル", "testing morphology twice")
+  end
+
   it "returns an empty array when the markdown is blank" do
     expect(analyzer.call(node: nil, title: nil, markdown: "")).to eq([])
   end

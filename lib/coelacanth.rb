@@ -50,4 +50,10 @@ module Coelacanth
   def self.config
     @config ||= Configure.new
   end
+
+  def self.morphological_analysis(text, title: nil)
+    Extractor::MorphologicalAnalyzer
+      .new(config: config)
+      .call_text(text, title: title)
+  end
 end

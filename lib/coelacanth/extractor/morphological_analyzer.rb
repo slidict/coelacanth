@@ -64,6 +64,10 @@ module Coelacanth
         @config = config
       end
 
+      def call_text(text, title: nil)
+        call(node: nil, title: title, markdown: text)
+      end
+
       def call(node:, title:, markdown:)
         stats = Hash.new do |hash, key|
           hash[key] = {

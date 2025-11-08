@@ -18,7 +18,14 @@ RSpec.describe Coelacanth do
     let(:config) { instance_double(Coelacanth::Configure) }
     let(:redirector) { instance_double(Coelacanth::Redirect, resolve_redirect: url) }
     let(:screenshot) { "screenshot_data" }
-    let(:extraction_payload) { { title: "Example", body_markdown: "Body", body_markdown_list: ["Body"] } }
+    let(:extraction_payload) do
+      {
+        title: "Example",
+        body_markdown: "Body",
+        body_markdown_list: ["Body"],
+        body_markdown_morphemes: [{ token: "body", count: 1 }]
+      }
+    end
     let(:utf8_html) { "<html><body>デジタル庁のテスト</body></html>" }
     let(:binary_html) { utf8_html.dup.force_encoding(Encoding::ASCII_8BIT) }
     let(:http_response) { instance_double(Net::HTTPSuccess, body: binary_html, code: "200") }

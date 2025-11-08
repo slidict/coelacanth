@@ -38,6 +38,11 @@ RSpec.describe Coelacanth::Extractor do
       expect(result[:confidence]).to be >= 0.85
       expect(result[:body_markdown]).to include("Structured article body")
       expect(result[:body_markdown_list]).to eq(["Structured article body."])
+      expect(result[:body_markdown_morphemes]).to eq([
+        { token: "article", count: 1 },
+        { token: "body", count: 1 },
+        { token: "structured", count: 1 }
+      ])
       expect(result[:listings]).to eq([])
     end
   end
@@ -74,6 +79,8 @@ RSpec.describe Coelacanth::Extractor do
       expect(result[:body_markdown]).to include("This is the first paragraph")
       expect(result[:body_markdown_list]).to include("# Heading")
       expect(result[:body_markdown_list]).to include("This is the first paragraph of the article body.")
+      expect(result[:body_markdown_morphemes].first).to eq({ token: "paragraph", count: 2 })
+      expect(result[:body_markdown_morphemes]).to include({ token: "article", count: 1 })
       expect(result[:confidence]).to be >= 0.75
       expect(result[:listings]).to eq([])
     end
@@ -104,6 +111,7 @@ RSpec.describe Coelacanth::Extractor do
       expect(result[:source]).to eq(:ml)
       expect(result[:body_markdown]).to include("Machine learning fallback body")
       expect(result[:body_markdown_list]).to include("Machine learning fallback body.")
+      expect(result[:body_markdown_morphemes]).to include({ token: "learning", count: 1 }, { token: "machine", count: 1 })
       expect(result[:confidence]).to be >= 0.45
       expect(result[:listings]).to eq([])
     end

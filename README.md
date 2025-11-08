@@ -143,6 +143,15 @@ development:
     key: "<%= ENV.fetch("COELACANTH_SCREENSHOT_ONE_API_KEY", "your_screenshot_one_api_key_here") %>"
   youtube:
     api_key: "<%= ENV.fetch("COELACANTH_YOUTUBE_API_KEY", "") %>"
+  morphology:
+    latin_joiners:
+      - ","
+    japanese_hiragana_suffixes:
+      - "ら"
+      - "の"
+      - "え"
+    japanese_category_breaks:
+      - "katakana_to_kanji"
 ```
 
 - **Ferrum client** – Requires a running Chrome instance that exposes the DevTools protocol via WebSocket. Configure the URL,
@@ -155,6 +164,19 @@ development:
   thumbnail for downstream processing.
 - Configuration is environment-aware: set `RAILS_ENV`/`RACK_ENV` or use Rails' built-in environment handling when the gem is
   used inside a Rails project.
+
+#### Morphological analyzer tuning
+
+The terms returned in `body_morphemes` can be tuned per deployment by configuring the optional `morphology` section:
+
+- `morphology.latin_joiners` — An array of characters that should be treated as connectors between Latin tokens. The default
+  value includes a comma so numbers such as `7,000` stay intact instead of being split into separate terms.
+- `morphology.japanese_hiragana_suffixes` — A whitelist of Hiragana tokens that are allowed to extend Kanji sequences. By
+  default we keep common nominal suffixes such as `ら`, `の`, and the trailing `え` in `訴え` while preventing particles like `に`
+  from merging with the preceding noun. Provide your own list or set the value to `null`/`~` to allow any Hiragana suffix.
+- `morphology.japanese_category_breaks` — An array of transitions (e.g., `katakana_to_kanji`) that should stop Japanese token
+  sequences. This is useful when you want Katakana loanwords such as `タワマン` to stand alone instead of being merged with the
+  Kanji terms that follow them.
 
 Representative images are downloaded into a temporary directory using the built-in HTTP client. The extractor returns both the
 resolved URL and the local file path via `extraction[:eyecatch_image]`. Remember to move or delete the file once you have

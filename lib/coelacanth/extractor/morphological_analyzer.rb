@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require "set"
 require "strscan"
 
 module Coelacanth
@@ -50,7 +51,18 @@ module Coelacanth
         accent: 1.1
       }.freeze
 
+      CATEGORY_ALIASES = {
+        "kanji" => :kanji,
+        "hiragana" => :hiragana,
+        "katakana" => :katakana,
+        "latin" => :latin
+      }.freeze
+
       Term = Struct.new(:key, :token, :components, :language, keyword_init: true)
+
+      def initialize(config: Coelacanth.config)
+        @config = config
+      end
 
       def call(node:, title:, markdown:)
         stats = Hash.new do |hash, key|
@@ -206,7 +218,8 @@ module Coelacanth
           when :latin
             sequences, index = consume_latin_sequences(tokens, index)
             sequences.each do |sequence|
-              normalized = sequence.map { |component| component[:normalized] }.join(" ")
+              joined = join_latin_sequence(sequence)
+              normalized = joined[:normalized]
               components = sequence.length
 
               next unless valid_english_term?(normalized)
@@ -245,7 +258,7 @@ module Coelacanth
           break unless pointer < tokens.length
 
           next_token = tokens[pointer]
-          break unless next_token[:category] == :latin && whitespace_gap?(next_token[:gap])
+          break unless next_token[:category] == :latin && joinable_gap?(next_token[:gap], :latin)
         end
 
         sequences = split_latin_run(run)
@@ -294,8 +307,10 @@ module Coelacanth
       end
 
       def japanese_sequence_continues?(current, following)
+        return false if japanese_category_break?(current, following)
+
         return false unless japanese_noun_token?(following) ||
-          (following[:category] == :latin && following[:gap].empty?) ||
+          (following[:category] == :latin && joinable_gap?(following[:gap], :latin)) ||
           hiragana_suffix?(current, following)
 
         gap = following[:gap]
@@ -309,11 +324,38 @@ module Coelacanth
       end
 
       def hiragana_suffix?(current, following)
-        current[:category] == :kanji && following[:category] == :hiragana && following[:gap].empty?
+        return false unless current[:category] == :kanji
+        return false unless following[:category] == :hiragana
+        return false unless following[:gap].empty?
+
+        suffixes = configured_hiragana_suffixes
+        return true if suffixes.nil?
+
+        suffixes.include?(following[:raw])
       end
 
       def whitespace_gap?(gap)
         gap.strip.empty?
+      end
+
+      def joinable_gap?(gap, category)
+        return true if whitespace_gap?(gap)
+
+        case category
+        when :latin
+          connector_gap?(gap)
+        else
+          false
+        end
+      end
+
+      def connector_gap?(gap)
+        return false if gap.nil?
+
+        stripped = gap.delete("\s")
+        return false if stripped.empty?
+
+        stripped.chars.all? { |char| latin_joiners.include?(char) }
       end
 
       def normalize_token(token, category)
@@ -428,6 +470,82 @@ module Coelacanth
         end
 
         texts.join(" ")
+      end
+
+      def join_latin_sequence(sequence)
+        token_builder = String.new
+        normalized_builder = String.new
+
+        sequence.each_with_index do |component, index|
+          if index.zero?
+            token_builder << component[:raw]
+            normalized_builder << component[:normalized]
+            next
+          end
+
+          gap = component[:gap]
+
+          if connector_gap?(gap)
+            token_builder << gap
+            normalized_builder << gap_connector_representation(gap)
+          else
+            token_builder << " "
+            normalized_builder << " "
+          end
+
+          token_builder << component[:raw]
+          normalized_builder << component[:normalized]
+        end
+
+        { token: token_builder, normalized: normalized_builder }
+      end
+
+      def gap_connector_representation(gap)
+        stripped = gap.delete("\s")
+        return gap if stripped.empty?
+
+        stripped + (gap.match?(/\s+$/) ? " " : "")
+      end
+
+      def latin_joiners
+        @latin_joiners ||= Array(config_read("morphology.latin_joiners")).map(&:to_s)
+      end
+
+      def configured_hiragana_suffixes
+        @configured_hiragana_suffixes ||= begin
+          suffixes = config_read("morphology.japanese_hiragana_suffixes")
+          suffixes&.map(&:to_s)
+        end
+      end
+
+      def configured_japanese_category_breaks
+        @configured_japanese_category_breaks ||= begin
+          entries = Array(config_read("morphology.japanese_category_breaks"))
+          entries.each_with_object(Set.new) do |entry, set|
+            next unless entry
+
+            from, to = entry.to_s.split(/_to_/, 2)
+            from_category = CATEGORY_ALIASES[from]
+            to_category = CATEGORY_ALIASES[to]
+
+            set << [from_category, to_category] if from_category && to_category
+          end
+        end
+      end
+
+      def japanese_category_break?(current, following)
+        breaks = configured_japanese_category_breaks
+        return false if breaks.empty?
+
+        breaks.include?([current[:category], following[:category]])
+      end
+
+      def config_read(key)
+        return nil unless @config
+
+        @config.read(key)
+      rescue NoMethodError
+        nil
       end
     end
   end

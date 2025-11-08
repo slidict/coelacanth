@@ -82,6 +82,7 @@ result[:extraction] # => article metadata and body markdown
 result[:dom]        # => Oga DOM representation for downstream processing
 result[:screenshot] # => PNG screenshot as a binary string
 result[:response]   # => HTTP status, headers, and final URL
+```
 
 # Plain-text morphology
 
@@ -95,7 +96,6 @@ Coelacanth.morphological_analysis("これはテストです。 Testing morpholog
 #      { token: "テスト", score: 1.02, count: 1 },
 #      ...
 #    ]
-```
 ```
 
 The returned hash includes:

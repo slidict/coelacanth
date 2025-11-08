@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require_relative "extractor/preprocessor"
 require_relative "extractor/normalizer"
 require_relative "extractor/metadata_probe"
 require_relative "extractor/heuristic_probe"
@@ -25,7 +26,8 @@ module Coelacanth
     )
 
     def call(html:, url: nil)
-      document = Normalizer.new.call(html: html, base_url: url)
+      preprocessed_html = Preprocessor.new.call(html: html, url: url)
+      document = Normalizer.new.call(html: preprocessed_html, base_url: url)
 
       [
         [MetadataProbe.new, 0.85],

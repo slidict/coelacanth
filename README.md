@@ -123,6 +123,8 @@ development:
       User-Agent: "<%= ENV.fetch("COELACANTH_REMOTE_CLIENT_USER_AGENT", "Coelacanth Chrome Extension") %>"
   screenshot_one:
     key: "<%= ENV.fetch("COELACANTH_SCREENSHOT_ONE_API_KEY", "your_screenshot_one_api_key_here") %>"
+  youtube:
+    api_key: "<%= ENV.fetch("COELACANTH_YOUTUBE_API_KEY", "") %>"
 ```
 
 - **Ferrum client** – Requires a running Chrome instance that exposes the DevTools protocol via WebSocket. Configure the URL,
@@ -131,6 +133,8 @@ development:
 - **Eyecatch image extraction** – Representative images are discovered automatically by checking Open Graph/Twitter metadata,
   Schema.org JSON-LD payloads, and high-signal `<img>` elements (hero/cover images, large dimensions, etc.). No manual XPath
   maintenance is required.
+- **YouTube Data API** – Set an API key to turn YouTube watch URLs into structured articles using the video description and
+  thumbnail for downstream processing.
 - Configuration is environment-aware: set `RAILS_ENV`/`RACK_ENV` or use Rails' built-in environment handling when the gem is
   used inside a Rails project.
 
@@ -149,10 +153,25 @@ export COELACANTH_REMOTE_CLIENT_AUTHORIZATION="Bearer <token>"
 
 export COELACANTH_REMOTE_CLIENT_USER_AGENT="Coelacanth Chrome Extension"
 export COELACANTH_SCREENSHOT_ONE_API_KEY="your_screenshot_one_api_key_here"
+export COELACANTH_YOUTUBE_API_KEY="your_youtube_data_api_key"
 ```
 
 If `COELACANTH_REMOTE_CLIENT_AUTHORIZATION` is omitted or left blank, the `Authorization` header is not injected into the
 remote browser session.
+
+### YouTube Data API integration
+
+With `COELACANTH_YOUTUBE_API_KEY` configured (or `youtube.api_key` populated directly in `config/coelacanth.yml`),
+`Coelacanth::Extractor` runs a preprocessor that recognizes standard YouTube watch URLs (`youtube.com`, `youtu.be`,
+`m.youtube.com`, etc.). The preprocessor fetches the video snippet from the YouTube Data API and builds an article-like HTML
+document that contains:
+
+- The video title and publish timestamp as structured metadata (JSON-LD and Open Graph).
+- The full description rendered as Markdown-friendly paragraphs.
+- The highest available thumbnail, passed to the eye-catch/image collector pipeline.
+
+If the API key is missing or the API request fails, the extractor falls back to the original HTML that was fetched from
+YouTube, so non-video pages continue to behave as before.
 
 When using Docker Compose, you can create a `.env` file or export the variables in your environment so the `app` service picks
 them up automatically.

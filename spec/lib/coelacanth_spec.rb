@@ -18,17 +18,34 @@ RSpec.describe Coelacanth do
     let(:config) { instance_double(Coelacanth::Configure) }
     let(:redirector) { instance_double(Coelacanth::Redirect, resolve_redirect: url) }
     let(:screenshot) { "screenshot_data" }
+    let(:expected_response_metadata) do
+      {
+        status_code: 200,
+        headers: { "content-type" => "text/html" },
+        final_url: url
+      }
+    end
     let(:extraction_payload) do
       {
         title: "Example",
         body_markdown: "Body",
         body_markdown_list: ["Body"],
-        body_markdown_morphemes: [{ token: "body", count: 1 }]
+        body_markdown_morphemes: [{ token: "body", count: 1 }],
+        response_metadata: expected_response_metadata
       }
     end
     let(:utf8_html) { "<html><body>デジタル庁のテスト</body></html>" }
     let(:binary_html) { utf8_html.dup.force_encoding(Encoding::ASCII_8BIT) }
-    let(:http_response) { instance_double(Net::HTTPSuccess, body: binary_html, code: "200") }
+    let(:http_response) do
+      double(
+        "http_response",
+        body: binary_html,
+        code: "200",
+        status_code: 200,
+        headers: { "content-type" => "text/html" },
+        final_url: url
+      )
+    end
 
     before do
       allow(Coelacanth).to receive(:config).and_return(config)
@@ -44,7 +61,8 @@ RSpec.describe Coelacanth do
         expect(result).to eq({
           dom: "parsed_dom",
           screenshot: screenshot,
-          extraction: extraction_payload
+          extraction: extraction_payload,
+          response: expected_response_metadata
         })
       end
     end
@@ -64,6 +82,7 @@ RSpec.describe Coelacanth do
           expect(args[:html].encoding).to eq(Encoding::UTF_8)
           expect(args[:html]).to eq(utf8_html)
           expect(args[:url]).to eq(url)
+          expect(args[:response_metadata]).to eq(expected_response_metadata)
           extraction_payload
         end
       end
@@ -90,13 +109,25 @@ RSpec.describe Coelacanth do
     end
 
     context "when the HTTP request times out" do
+      let(:expected_response_metadata) do
+        {
+          status_code: nil,
+          headers: {},
+          final_url: url
+        }
+      end
+
       before do
         allow(Coelacanth::HTTP).to receive(:get_response).and_raise(Coelacanth::TimeoutError, "timeout")
         allow(config).to receive(:read).with("client").and_return("ferrum")
         allow(Coelacanth::Client::Ferrum).to receive(:new).with(url).and_return(ferrum_client)
         allow(ferrum_client).to receive(:get_screenshot).and_return(screenshot)
         allow(dom).to receive(:oga).with(url, html: "").and_return("parsed_dom")
-        allow(extractor).to receive(:call).with(html: "", url: url).and_return(extraction_payload)
+        allow(extractor).to receive(:call).with(
+          html: "",
+          url: url,
+          response_metadata: expected_response_metadata
+        ).and_return(extraction_payload)
       end
 
       it "continues with empty HTML" do
@@ -105,7 +136,8 @@ RSpec.describe Coelacanth do
         expect(result).to eq({
           dom: "parsed_dom",
           screenshot: screenshot,
-          extraction: extraction_payload
+          extraction: extraction_payload,
+          response: expected_response_metadata
         })
       end
     end

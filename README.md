@@ -81,15 +81,33 @@ result = Coelacanth.analyze("https://example.com/article")
 result[:extraction] # => article metadata and body markdown
 result[:dom]        # => Oga DOM representation for downstream processing
 result[:screenshot] # => PNG screenshot as a binary string
+result[:response]   # => HTTP status, headers, and final URL
 ```
 
 The returned hash includes:
 
 - `:extraction` – output from `Coelacanth::Extractor`, including title, Markdown body (`body_markdown`,
-  `body_markdown_list`, and frequency-sorted morphemes in `body_markdown_morphemes`), images, listings,
-  published date, and the probe source and confidence score.
+  `body_markdown_list`, and frequency-sorted morphemes in `body_markdown_morphemes`), the normalized plain-text body (`body_text`),
+  images, listings, published date, detected site name, and the probe source and confidence score. The extractor also echoes the
+  HTTP metadata it received via `response_metadata` for downstream consumers that only operate on the extraction payload.
 - `:dom` – a parsed Oga DOM if you need to traverse the document manually.
 - `:screenshot` – raw PNG data that you can persist or feed to other systems.
+- `:response` – HTTP metadata captured during the initial fetch.
+
+### Response and extraction metadata
+
+The `:response` key exposes a hash with the following keys:
+
+- `:status_code` – Numeric HTTP status (e.g., `200`).
+- `:headers` – A lowercase header hash as returned by `Net::HTTP#each_header`.
+- `:final_url` – The URL that was ultimately fetched after resolving redirects.
+
+Within the extraction payload (`result[:extraction]`), the following additional metadata is available:
+
+- `:site_name` – Site or application name inferred from Open Graph/Twitter meta tags or the document `<title>`.
+- `:body_text` – Plain-text body with collapsed whitespace, suitable for search indexing or summarization.
+- `:response_metadata` – Mirrors the top-level `:response` hash so downstream processing can access HTTP metadata without
+  carrying the entire analysis result.
 
 ## Extractor pipeline
 Coelacanth ships with a multi-stage extractor that tries increasingly involved probes until one meets its confidence target:

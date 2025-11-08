@@ -46,6 +46,21 @@ RSpec.describe Coelacanth::Extractor do
       ])
       expect(result[:listings]).to eq([])
       expect(result).to include(:eyecatch_image)
+      expect(result[:site_name]).to eq("Ignored title")
+      expect(result[:body_text]).to eq("Structured article body.")
+      expect(result[:response_metadata]).to eq({})
+    end
+
+    it "embeds provided response metadata" do
+      metadata = {
+        status_code: 200,
+        headers: { "content-type" => "text/html" },
+        final_url: "https://example.com/news"
+      }
+
+      result = extractor.call(html: html, url: "https://example.com/news", response_metadata: metadata)
+
+      expect(result[:response_metadata]).to eq(metadata)
     end
   end
 
@@ -85,6 +100,8 @@ RSpec.describe Coelacanth::Extractor do
       expect(result[:body_markdown_morphemes]).to include({ token: "article", count: 1 })
       expect(result[:confidence]).to be >= 0.75
       expect(result[:listings]).to eq([])
+      expect(result[:site_name]).to eq("Sample article")
+      expect(result[:body_text]).to include("This is the first paragraph of the article body.")
     end
   end
 

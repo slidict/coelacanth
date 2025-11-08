@@ -215,4 +215,22 @@ RSpec.describe Coelacanth::Extractor do
       expect(result[:listings]).to eq([])
     end
   end
+
+  describe "segment sanitization" do
+    it "strips markdown links while preserving text" do
+      segment = "This [example link](https://example.com/path) shows formatting."
+
+      sanitized = extractor.send(:sanitize_markdown_segment, segment)
+
+      expect(sanitized).to eq("This example link shows formatting.")
+    end
+
+    it "handles escaped delimiters without catastrophic backtracking" do
+      tricky_segment = "See [escaped \[brackets\]](https://example.com/resource) and trailing text."
+
+      sanitized = extractor.send(:sanitize_markdown_segment, tricky_segment)
+
+      expect(sanitized).to eq("See escaped [brackets] and trailing text.")
+    end
+  end
 end

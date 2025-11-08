@@ -94,11 +94,92 @@ module Coelacanth
     def sanitize_markdown_segment(segment)
       text = segment.to_s.dup
       text.gsub!(/```.*?```/m, "")
-      text.gsub!(/\[([^\]]+)\]\(([^)]+)\)/, '\1')
+      text = strip_markdown_links(text)
       text.gsub!(/^\s*(?:[-+*>]|\d+\.)\s+/, "")
       text.gsub!(/[\*_`]/, "")
       text.gsub!(/^#+\s*/, "")
       text.strip
+    end
+
+    def strip_markdown_links(text)
+      result = +""
+      index = 0
+
+      while index < text.length
+        open_bracket = text.index('[', index)
+
+        break unless open_bracket
+
+        result << text[index...open_bracket]
+        close_bracket = find_closing_delimiter(text, open_bracket + 1, '[', ']')
+
+        unless close_bracket
+          result << text[open_bracket..]
+          return result
+        end
+
+        label = text[(open_bracket + 1)...close_bracket]
+        next_index = close_bracket + 1
+
+        if text[next_index] == '('
+          close_paren = find_closing_delimiter(text, next_index + 1, '(', ')')
+
+          if close_paren
+            result << decode_markdown_escapes(label)
+            index = close_paren + 1
+            next
+          end
+        end
+
+        result << text[open_bracket...next_index]
+        index = next_index
+      end
+
+      result << text[index..] if index < text.length
+      result
+    end
+
+    def find_closing_delimiter(text, index, opener, closer)
+      depth = 1
+      escape = false
+
+      while index < text.length
+        char = text[index]
+
+        if escape
+          escape = false
+        elsif char == '\\'
+          escape = true
+        elsif char == opener
+          depth += 1
+        elsif char == closer
+          depth -= 1
+          return index if depth.zero?
+        end
+
+        index += 1
+      end
+
+      nil
+    end
+
+    def decode_markdown_escapes(text)
+      result = +""
+      escape = false
+
+      text.each_char do |char|
+        if escape
+          result << char
+          escape = false
+        elsif char == '\\'
+          escape = true
+        else
+          result << char
+        end
+      end
+
+      result << '\\' if escape
+      result
     end
   end
 end

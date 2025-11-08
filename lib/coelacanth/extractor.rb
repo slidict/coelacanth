@@ -9,6 +9,7 @@ require_relative "extractor/fallback_probe"
 require_relative "extractor/markdown_renderer"
 require_relative "extractor/image_collector"
 require_relative "extractor/markdown_listing_collector"
+require_relative "extractor/eyecatch_image_extractor"
 require_relative "extractor/morphological_analyzer"
 
 module Coelacanth
@@ -61,6 +62,7 @@ module Coelacanth
         body_markdown_list: body_markdown_list,
         body_markdown_morphemes: morpheme_features,
         images: ImageCollector.new.call(node),
+        eyecatch_image: EyecatchImageExtractor.new.call(doc: document, base_url: url),
         published_at: result.published_at,
         byline: result.byline,
         source: result.source_tag,

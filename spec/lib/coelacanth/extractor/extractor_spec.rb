@@ -45,6 +45,7 @@ RSpec.describe Coelacanth::Extractor do
         { token: "structured", count: 1 }
       ])
       expect(result[:listings]).to eq([])
+      expect(result).to include(:eyecatch_image)
     end
   end
 

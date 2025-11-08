@@ -162,7 +162,7 @@ module Coelacanth
         return "" if sanitized.empty?
 
         sanitized = sanitized.gsub(MARKDOWN_CONTROL_PATTERN, " ")
-        sanitized.gsub(/(^|\n)\s*[-+*]\s+/, " ")
+        sanitized.gsub(/^[ \t]*[-+*]\s+/, " ")
       end
 
       def tokenize(text)

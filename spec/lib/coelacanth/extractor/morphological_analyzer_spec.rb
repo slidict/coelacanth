@@ -14,22 +14,16 @@ RSpec.describe Coelacanth::Extractor::MorphologicalAnalyzer do
       Testing the analyzer, testing morphological analysis!
     MARKDOWN
 
-    result = analyzer.call(markdown: markdown)
+    result = analyzer.call(node: nil, title: nil, markdown: markdown)
 
-    expect(result).to eq([
-      { token: "testing", count: 2 },
-      { token: "これは", count: 2 },
-      { token: "です", count: 2 },
-      { token: "analysis", count: 1 },
-      { token: "analyzer", count: 1 },
-      { token: "morphological", count: 1 },
-      { token: "サンプル", count: 1 },
-      { token: "テスト", count: 1 },
-      { token: "見出し", count: 1 }
-    ])
+    expect(result).to all(include(:token, :score, :count))
+    expect(result.first[:token]).to eq("testing morphological analysis")
+    expect(result.map { |entry| entry[:token] }).to include("見出し", "サンプル", "テスト")
+    scores = result.map { |entry| entry[:score] }
+    expect(scores).to eq(scores.sort.reverse)
   end
 
   it "returns an empty array when the markdown is blank" do
-    expect(analyzer.call(markdown: "")).to eq([])
+    expect(analyzer.call(node: nil, title: nil, markdown: "")).to eq([])
   end
 end

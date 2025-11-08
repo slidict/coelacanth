@@ -87,7 +87,7 @@ result[:response]   # => HTTP status, headers, and final URL
 The returned hash includes:
 
 - `:extraction` – output from `Coelacanth::Extractor`, including title, Markdown body (`body_markdown`,
-  `body_markdown_list`, and frequency-sorted morphemes in `body_markdown_morphemes`), the normalized plain-text body (`body_text`),
+  `body_markdown_list`, and scored morphemes in `body_morphemes`), the normalized plain-text body (`body_text`),
   images, listings, published date, detected site name, and the probe source and confidence score. The extractor also echoes the
   HTTP metadata it received via `response_metadata` for downstream consumers that only operate on the extraction payload.
 - `:dom` – a parsed Oga DOM if you need to traverse the document manually.

@@ -8,6 +8,7 @@ require_relative "extractor/fallback_probe"
 require_relative "extractor/markdown_renderer"
 require_relative "extractor/image_collector"
 require_relative "extractor/markdown_listing_collector"
+require_relative "extractor/morphological_analyzer"
 
 module Coelacanth
   # High-level API for extracting articles without site-specific selectors.
@@ -50,11 +51,13 @@ module Coelacanth
       node = result.node
       body_markdown = MarkdownRenderer.render(node)
       body_markdown_list = body_markdown.to_s.split(/\n{2,}/).map { |segment| segment.strip }.reject(&:empty?)
+      morpheme_features = MorphologicalAnalyzer.new.call(markdown: body_markdown)
 
       {
         title: result.title,
         body_markdown: body_markdown,
         body_markdown_list: body_markdown_list,
+        body_markdown_morphemes: morpheme_features,
         images: ImageCollector.new.call(node),
         published_at: result.published_at,
         byline: result.byline,

@@ -78,17 +78,29 @@ require "coelacanth"
 
 result = Coelacanth.analyze("https://example.com/article")
 
-result[:extraction] # => article metadata and body markdown
+result[:extraction] # => article metadata, body markdown, plain text, and response info
 result[:dom]        # => Oga DOM representation for downstream processing
 result[:screenshot] # => PNG screenshot as a binary string
+result[:response]   # => HTTP metadata (status, headers, final URL)
 ```
 
 The returned hash includes:
 
-- `:extraction` – output from `Coelacanth::Extractor`, including title, Markdown body (`body_markdown` and
-  `body_markdown_list`), images, listings, published date, and the probe source and confidence score.
+- `:extraction` – output from `Coelacanth::Extractor`, including title, site name, Markdown body (`body_markdown` and
+  `body_markdown_list`), plain-text body (`body_text`), images, listings, published date, the probe source, confidence score,
+  and the response metadata.
 - `:dom` – a parsed Oga DOM if you need to traverse the document manually.
 - `:screenshot` – raw PNG data that you can persist or feed to other systems.
+- `:response` – HTTP response metadata captured during the fetch.
+
+### Response metadata
+
+Both `result[:response]` and `result[:extraction][:response]` expose the following information about the HTTP fetch:
+
+- `status_code` – Numeric HTTP status code (e.g., `200`).
+- `status_message` – Reason phrase supplied by the server (e.g., `"OK"`).
+- `headers` – Normalized header hash as returned by `Net::HTTP`.
+- `final_url` – The resolved URL after following redirects.
 
 ## Extractor pipeline
 Coelacanth ships with a multi-stage extractor that tries increasingly involved probes until one meets its confidence target:

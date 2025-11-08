@@ -14,12 +14,18 @@ RSpec.describe Coelacanth::HTTP do
 
   it "allows requests when robots.txt permits the path" do
     expect(Coelacanth::Robots).to receive(:allowed?).with(public_uri).and_return(true)
-    stub_request(:get, public_uri.to_s).to_return(status: 200, body: "ok")
+    stub_request(:get, public_uri.to_s)
+      .to_return(status: [200, "OK"], body: "ok", headers: { "Content-Type" => "text/plain" })
 
     response = described_class.get_response(public_uri)
 
     expect(response).to be_a(Net::HTTPSuccess)
     expect(response.body).to eq("ok")
+    metadata = response.coelacanth_metadata
+    expect(metadata.status_code).to eq(200)
+    expect(metadata.status_message).to eq("OK")
+    expect(metadata.headers["content-type"]).to eq("text/plain")
+    expect(metadata.final_url).to eq(public_uri.to_s)
   end
 
   it "raises an error when robots.txt disallows the path" do

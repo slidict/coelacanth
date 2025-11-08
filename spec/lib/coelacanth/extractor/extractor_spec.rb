@@ -5,6 +5,15 @@ require "spec_helper"
 RSpec.describe Coelacanth::Extractor do
   subject(:extractor) { described_class.new }
 
+  let(:response_metadata) do
+    Coelacanth::HTTP::ResponseMetadata.new(
+      status_code: 200,
+      status_message: "OK",
+      headers: { "content-type" => "text/html" },
+      final_url: "https://example.com/news"
+    )
+  end
+
   describe "metadata extraction" do
     let(:html) do
       <<~HTML
@@ -30,7 +39,11 @@ RSpec.describe Coelacanth::Extractor do
     end
 
     it "returns the jsonld payload" do
-      result = extractor.call(html: html, url: "https://example.com/news")
+      result = extractor.call(
+        html: html,
+        url: "https://example.com/news",
+        response_metadata: response_metadata
+      )
 
       expect(result[:source]).to eq(:jsonld)
       expect(result[:title]).to eq("JSON-LD Title")
@@ -39,6 +52,9 @@ RSpec.describe Coelacanth::Extractor do
       expect(result[:body_markdown]).to include("Structured article body")
       expect(result[:body_markdown_list]).to eq(["Structured article body."])
       expect(result[:listings]).to eq([])
+      expect(result[:site_name]).to eq("Ignored title")
+      expect(result[:body_text]).to include("Structured article body")
+      expect(result[:response]).to eq(response_metadata)
     end
   end
 
@@ -66,7 +82,11 @@ RSpec.describe Coelacanth::Extractor do
     end
 
     it "scores the main block and renders markdown" do
-      result = extractor.call(html: html, url: "https://example.com/heuristic")
+      result = extractor.call(
+        html: html,
+        url: "https://example.com/heuristic",
+        response_metadata: response_metadata
+      )
 
       expect(result[:source]).to eq(:heuristic)
       expect(result[:title]).to eq("Sample article")
@@ -76,6 +96,9 @@ RSpec.describe Coelacanth::Extractor do
       expect(result[:body_markdown_list]).to include("This is the first paragraph of the article body.")
       expect(result[:confidence]).to be >= 0.75
       expect(result[:listings]).to eq([])
+      expect(result[:site_name]).to eq("Sample article")
+      expect(result[:body_text]).to include("This is the first paragraph of the article body.")
+      expect(result[:response]).to eq(response_metadata)
     end
   end
 
@@ -99,13 +122,20 @@ RSpec.describe Coelacanth::Extractor do
     it "uses the weak ML probe when heuristics are insufficient" do
       allow_any_instance_of(Coelacanth::Extractor::HeuristicProbe).to receive(:call).and_return(nil)
 
-      result = extractor.call(html: html, url: "https://example.com/ml")
+      result = extractor.call(
+        html: html,
+        url: "https://example.com/ml",
+        response_metadata: response_metadata
+      )
 
       expect(result[:source]).to eq(:ml)
       expect(result[:body_markdown]).to include("Machine learning fallback body")
       expect(result[:body_markdown_list]).to include("Machine learning fallback body.")
       expect(result[:confidence]).to be >= 0.45
       expect(result[:listings]).to eq([])
+      expect(result[:site_name]).to eq("ML Article")
+      expect(result[:body_text]).to include("Machine learning fallback body.")
+      expect(result[:response]).to eq(response_metadata)
     end
   end
 
@@ -129,7 +159,11 @@ RSpec.describe Coelacanth::Extractor do
         </html>
       HTML
 
-      result = extractor.call(html: html, url: "https://example.com/articles/1")
+      result = extractor.call(
+        html: html,
+        url: "https://example.com/articles/1",
+        response_metadata: response_metadata
+      )
 
       expect(result[:listings]).to contain_exactly(
         {
@@ -172,7 +206,11 @@ RSpec.describe Coelacanth::Extractor do
         </html>
       HTML
 
-      result = extractor.call(html: html, url: "https://www.digital.go.jp/")
+      result = extractor.call(
+        html: html,
+        url: "https://www.digital.go.jp/",
+        response_metadata: response_metadata
+      )
 
       expect(result[:listings]).to eq([])
     end

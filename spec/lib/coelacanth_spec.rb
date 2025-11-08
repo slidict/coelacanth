@@ -153,4 +153,18 @@ RSpec.describe Coelacanth do
       expect(Coelacanth.config).to be(config_instance)
     end
   end
+
+  describe "#morphological_analysis" do
+    let(:config) { instance_double(Coelacanth::Configure) }
+    let(:analyzer) { instance_double(Coelacanth::Extractor::MorphologicalAnalyzer) }
+
+    it "delegates to the morphological analyzer" do
+      allow(Coelacanth).to receive(:config).and_return(config)
+      allow(Coelacanth::Extractor::MorphologicalAnalyzer)
+        .to receive(:new).with(config: config).and_return(analyzer)
+      allow(analyzer).to receive(:call_text).with("入力テキスト", title: "タイトル").and_return([:morphemes])
+
+      expect(Coelacanth.morphological_analysis("入力テキスト", title: "タイトル")).to eq([:morphemes])
+    end
+  end
 end

@@ -82,6 +82,20 @@ result[:extraction] # => article metadata and body markdown
 result[:dom]        # => Oga DOM representation for downstream processing
 result[:screenshot] # => PNG screenshot as a binary string
 result[:response]   # => HTTP status, headers, and final URL
+
+# Plain-text morphology
+
+You can run the morphological analyzer without fetching a page by passing plain
+text:
+
+```ruby
+Coelacanth.morphological_analysis("これはテストです。 Testing morphology twice.")
+# => [
+#      { token: "testing morphology twice", score: 1.23, count: 2 },
+#      { token: "テスト", score: 1.02, count: 1 },
+#      ...
+#    ]
+```
 ```
 
 The returned hash includes:

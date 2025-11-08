@@ -56,7 +56,11 @@ module Coelacanth
       node = result.node
       body_markdown = MarkdownRenderer.render(node)
       body_markdown_list = body_markdown.to_s.split(/\n{2,}/).map { |segment| segment.strip }.reject(&:empty?)
-      morpheme_features = MorphologicalAnalyzer.new.call(markdown: body_markdown)
+      body_morphemes = MorphologicalAnalyzer.new.call(
+        node: node,
+        title: result.title,
+        markdown: body_markdown
+      )
 
       site_name = extract_site_name(document)
       body_text = extract_body_text(node)
@@ -65,7 +69,7 @@ module Coelacanth
         title: result.title,
         body_markdown: body_markdown,
         body_markdown_list: body_markdown_list,
-        body_markdown_morphemes: morpheme_features,
+        body_morphemes: body_morphemes,
         images: ImageCollector.new.call(node),
         eyecatch_image: EyecatchImageExtractor.new.call(doc: document, base_url: url),
         published_at: result.published_at,

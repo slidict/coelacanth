@@ -39,11 +39,11 @@ RSpec.describe Coelacanth::Extractor do
       expect(result[:confidence]).to be >= 0.85
       expect(result[:body_markdown]).to include("Structured article body")
       expect(result[:body_markdown_list]).to eq(["Structured article body."])
-      expect(result[:body_markdown_morphemes]).to eq([
-        { token: "article", count: 1 },
-        { token: "body", count: 1 },
-        { token: "structured", count: 1 }
-      ])
+      expect(result[:body_morphemes]).not_to be_empty
+      expect(result[:body_morphemes].first).to include(:token, :score, :count)
+      expect(result[:body_morphemes].map { |entry| entry[:token] }).to include("structured article body")
+      scores = result[:body_morphemes].map { |entry| entry[:score] }
+      expect(scores).to eq(scores.sort.reverse)
       expect(result[:listings]).to eq([])
       expect(result).to include(:eyecatch_image)
       expect(result[:site_name]).to eq("Ignored title")
@@ -96,8 +96,12 @@ RSpec.describe Coelacanth::Extractor do
       expect(result[:body_markdown]).to include("This is the first paragraph")
       expect(result[:body_markdown_list]).to include("# Heading")
       expect(result[:body_markdown_list]).to include("This is the first paragraph of the article body.")
-      expect(result[:body_markdown_morphemes].first).to eq({ token: "paragraph", count: 2 })
-      expect(result[:body_markdown_morphemes]).to include({ token: "article", count: 1 })
+      expect(result[:body_morphemes]).to all(include(:token, :score, :count))
+      expect(result[:body_morphemes].first[:score]).to be >= result[:body_morphemes].last[:score]
+      expect(result[:body_morphemes].map { |entry| entry[:token] }).to include(
+        "first paragraph",
+        "second paragraph containing additional information"
+      )
       expect(result[:confidence]).to be >= 0.75
       expect(result[:listings]).to eq([])
       expect(result[:site_name]).to eq("Sample article")
@@ -130,7 +134,8 @@ RSpec.describe Coelacanth::Extractor do
       expect(result[:source]).to eq(:ml)
       expect(result[:body_markdown]).to include("Machine learning fallback body")
       expect(result[:body_markdown_list]).to include("Machine learning fallback body.")
-      expect(result[:body_markdown_morphemes]).to include({ token: "learning", count: 1 }, { token: "machine", count: 1 })
+      tokens = result[:body_morphemes].map { |entry| entry[:token] }
+      expect(tokens).to include("machine learning fallback body")
       expect(result[:confidence]).to be >= 0.45
       expect(result[:listings]).to eq([])
     end

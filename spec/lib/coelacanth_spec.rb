@@ -30,7 +30,7 @@ RSpec.describe Coelacanth do
         title: "Example",
         body_markdown: "Body",
         body_markdown_list: ["Body"],
-        body_markdown_morphemes: [{ token: "body", count: 1 }],
+        body_morphemes: [{ token: "body", count: 1, score: 0.7 }],
         response_metadata: expected_response_metadata
       }
     end

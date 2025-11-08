@@ -85,8 +85,9 @@ result[:screenshot] # => PNG screenshot as a binary string
 
 The returned hash includes:
 
-- `:extraction` – output from `Coelacanth::Extractor`, including title, Markdown body (`body_markdown` and
-  `body_markdown_list`), images, listings, published date, and the probe source and confidence score.
+- `:extraction` – output from `Coelacanth::Extractor`, including title, Markdown body (`body_markdown`,
+  `body_markdown_list`, and frequency-sorted morphemes in `body_markdown_morphemes`), images, listings,
+  published date, and the probe source and confidence score.
 - `:dom` – a parsed Oga DOM if you need to traverse the document manually.
 - `:screenshot` – raw PNG data that you can persist or feed to other systems.
 

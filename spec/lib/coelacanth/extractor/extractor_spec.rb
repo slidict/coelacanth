@@ -158,6 +158,7 @@ RSpec.describe Coelacanth::Extractor do
     let(:config_double) { instance_double(Coelacanth::Configure) }
 
     before do
+      allow(config_double).to receive(:read).and_return(nil)
       allow(Coelacanth).to receive(:config).and_return(config_double)
     end
 

@@ -56,7 +56,7 @@ module Coelacanth
       node = result.node
       body_markdown = MarkdownRenderer.render(node)
       body_markdown_list = body_markdown.to_s.split(/\n{2,}/).map { |segment| segment.strip }.reject(&:empty?)
-      body_morphemes = MorphologicalAnalyzer.new.call(
+      body_morphemes = MorphologicalAnalyzer.new(config: Coelacanth.config).call(
         node: node,
         title: result.title,
         markdown: body_markdown

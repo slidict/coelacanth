@@ -13,6 +13,25 @@ development: &development
     key: "<%= ENV.fetch("COELACANTH_SCREENSHOT_ONE_API_KEY", "your_screenshot_one_api_key_here") %>"
   youtube:
     api_key: "<%= ENV.fetch("COELACANTH_YOUTUBE_API_KEY", "") %>"
+  morphology:
+    # Example configuration:
+    # latin_joiners:
+    #   - "'"
+    #   - "-"
+    # japanese_hiragana_suffixes:
+    #   - "さん"
+    #   - "ちゃん"
+    # japanese_category_breaks:
+    #   - "kanji_to_katakana"
+    #   - "katakana_to_kanji"
+    latin_joiners:
+      - ","
+    japanese_hiragana_suffixes:
+      - "ら"
+      - "の"
+      - "え"
+    japanese_category_breaks:
+      - "katakana_to_kanji"
 test:
   <<: *development
 production:

@@ -11,6 +11,8 @@ development: &development
       User-Agent: "<%= ENV.fetch("COELACANTH_REMOTE_CLIENT_USER_AGENT", "Coelacanth Chrome Extension") %>"
   screenshot_one:
     key: "<%= ENV.fetch("COELACANTH_SCREENSHOT_ONE_API_KEY", "your_screenshot_one_api_key_here") %>"
+  youtube:
+    api_key: "<%= ENV.fetch("COELACANTH_YOUTUBE_API_KEY", "") %>"
 test:
   <<: *development
 production:

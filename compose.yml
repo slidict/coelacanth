@@ -8,6 +8,9 @@ services:
       - COELACANTH_REMOTE_CLIENT_AUTHORIZATION=${COELACANTH_REMOTE_CLIENT_AUTHORIZATION:-}
       - COELACANTH_REMOTE_CLIENT_USER_AGENT=${COELACANTH_REMOTE_CLIENT_USER_AGENT:-}
       - COELACANTH_SCREENSHOT_ONE_API_KEY=${COELACANTH_SCREENSHOT_ONE_API_KEY:-}
+      - COELACANTH_GOTENBERG_URL=${COELACANTH_GOTENBERG_URL:-http://gotenberg:3000}
+      - COELACANTH_GOTENBERG_WAIT_DELAY=${COELACANTH_GOTENBERG_WAIT_DELAY:-}
+      - COELACANTH_GOTENBERG_USER_AGENT=${COELACANTH_GOTENBERG_USER_AGENT:-}
     tty: true
     stdin_open: true
     build:
@@ -17,9 +20,15 @@ services:
       - ./:/app:cached
     working_dir: /app
     command: bash
+    depends_on:
+      - gotenberg
     networks:
       - app-tier
   chrome:
     image: browserless/chrome:latest
+    networks:
+      - app-tier
+  gotenberg:
+    image: gotenberg/gotenberg:8
     networks:
       - app-tier

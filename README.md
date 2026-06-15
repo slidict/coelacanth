@@ -243,6 +243,10 @@ YouTube, so non-video pages continue to behave as before.
 When using Docker Compose, you can create a `.env` file or export the variables in your environment so the `app` service picks
 them up automatically.
 
+Docker Compose also starts a `gotenberg` service and passes `COELACANTH_GOTENBERG_URL` to the `app` service by default.
+To try that path locally, set `client: "gotenberg"` in `config/coelacanth.yml` or export the equivalent environment-specific
+configuration before running the app container.
+
 If you are working inside Docker, make sure the `UID` environment variable matches your host user by exporting it in your shell
 startup file:
 

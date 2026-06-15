@@ -4,6 +4,7 @@ require "net/http"
 require_relative "coelacanth/configure"
 require_relative "coelacanth/client/base"
 require_relative "coelacanth/client/ferrum"
+require_relative "coelacanth/client/gotenberg"
 require_relative "coelacanth/client/screenshot_one"
 require_relative "coelacanth/dom"
 require_relative "coelacanth/extractor"
@@ -21,7 +22,7 @@ module Coelacanth
   class RobotsDisallowedError < StandardError; end
 
   def self.analyze(url)
-    client_class = config.read("client") == "screenshot_one" ? Client::ScreenshotOne : Client::Ferrum
+    client_class = client_class_for(config.read("client"))
     @client = client_class.new(url)
     regular_url = Redirect.new.resolve_redirect(url)
     response = begin
@@ -45,6 +46,17 @@ module Coelacanth
       extraction: extractor_result,
       response: response_metadata
     }
+  end
+
+  def self.client_class_for(client_name)
+    case client_name
+    when "screenshot_one"
+      Client::ScreenshotOne
+    when "gotenberg"
+      Client::Gotenberg
+    else
+      Client::Ferrum
+    end
   end
 
   def self.config

@@ -13,6 +13,7 @@ RSpec.describe Coelacanth do
     let(:url) { "http://example.com" }
     let(:ferrum_client) { instance_double(Coelacanth::Client::Ferrum) }
     let(:screenshot_one_client) { instance_double(Coelacanth::Client::ScreenshotOne) }
+    let(:gotenberg_client) { instance_double(Coelacanth::Client::Gotenberg) }
     let(:dom) { instance_double(Coelacanth::Dom) }
     let(:extractor) { instance_double(Coelacanth::Extractor) }
     let(:config) { instance_double(Coelacanth::Configure) }
@@ -102,6 +103,16 @@ RSpec.describe Coelacanth do
           allow(config).to receive(:read).with("client").and_return("screenshot_one")
           allow(Coelacanth::Client::ScreenshotOne).to receive(:new).with(url).and_return(screenshot_one_client)
           allow(screenshot_one_client).to receive(:get_screenshot).and_return(screenshot)
+        end
+
+        include_examples "analyze workflow"
+      end
+
+      context "when client is gotenberg" do
+        before do
+          allow(config).to receive(:read).with("client").and_return("gotenberg")
+          allow(Coelacanth::Client::Gotenberg).to receive(:new).with(url).and_return(gotenberg_client)
+          allow(gotenberg_client).to receive(:get_screenshot).and_return(screenshot)
         end
 
         include_examples "analyze workflow"

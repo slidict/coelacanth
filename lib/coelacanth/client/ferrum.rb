@@ -5,8 +5,8 @@ require "ferrum"
 module Coelacanth::Client
   # Coelacanth::Client
   class Ferrum < Coelacanth::Client::Base
-    def initialize(url)
-      super(url)
+    def initialize(url, config = Coelacanth.config)
+      super(url, config)
       remote_client.goto(url)
     end
 

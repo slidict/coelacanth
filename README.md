@@ -143,7 +143,7 @@ Runtime configuration is stored in `config/coelacanth.yml`. Environments inherit
 
 ```yaml
 development:
-  client: "ferrum" # Options: "ferrum", "screenshot_one"
+  client: "ferrum" # Options: "ferrum", "screenshot_one", "gotenberg"
   remote_client:
     ws_url: "ws://chrome:3000/chrome"
     timeout: 10
@@ -155,6 +155,13 @@ development:
       User-Agent: "<%= ENV.fetch("COELACANTH_REMOTE_CLIENT_USER_AGENT", "Coelacanth Chrome Extension") %>"
   screenshot_one:
     key: "<%= ENV.fetch("COELACANTH_SCREENSHOT_ONE_API_KEY", "your_screenshot_one_api_key_here") %>"
+  gotenberg:
+    url: "<%= ENV.fetch("COELACANTH_GOTENBERG_URL", "http://gotenberg:3000") %>"
+    open_timeout: 5
+    read_timeout: 30
+    wait_delay: "<%= ENV.fetch("COELACANTH_GOTENBERG_WAIT_DELAY", "") %>"
+    user_agent: "<%= ENV.fetch("COELACANTH_GOTENBERG_USER_AGENT", "") %>"
+    extra_http_headers:
   youtube:
     api_key: "<%= ENV.fetch("COELACANTH_YOUTUBE_API_KEY", "") %>"
   morphology:
@@ -171,6 +178,9 @@ development:
 - **Ferrum client** – Requires a running Chrome instance that exposes the DevTools protocol via WebSocket. Configure the URL,
   timeout, the network idle timeout, and any headers to inject.
 - **ScreenshotOne client** – Supply an API key to offload screenshot capture to [ScreenshotOne](https://screenshotone.com/).
+- **Gotenberg client** – Set `client: "gotenberg"` to capture screenshots through Gotenberg's Chromium URL screenshot
+  endpoint. Configure `gotenberg.url`, request timeouts, an optional `wait_delay`, an optional screenshot `user_agent`,
+  and optional `extra_http_headers`.
 - **Eyecatch image extraction** – Representative images are discovered automatically by checking Open Graph/Twitter metadata,
   Schema.org JSON-LD payloads, and high-signal `<img>` elements (hero/cover images, large dimensions, etc.). No manual XPath
   maintenance is required.
@@ -207,6 +217,9 @@ export COELACANTH_REMOTE_CLIENT_AUTHORIZATION="Bearer <token>"
 
 export COELACANTH_REMOTE_CLIENT_USER_AGENT="Coelacanth Chrome Extension"
 export COELACANTH_SCREENSHOT_ONE_API_KEY="your_screenshot_one_api_key_here"
+export COELACANTH_GOTENBERG_URL="http://gotenberg:3000"
+export COELACANTH_GOTENBERG_WAIT_DELAY="2s"
+export COELACANTH_GOTENBERG_USER_AGENT="Coelacanth Chrome Extension"
 export COELACANTH_YOUTUBE_API_KEY="your_youtube_data_api_key"
 ```
 
@@ -229,6 +242,10 @@ YouTube, so non-video pages continue to behave as before.
 
 When using Docker Compose, you can create a `.env` file or export the variables in your environment so the `app` service picks
 them up automatically.
+
+Docker Compose also starts a `gotenberg` service and passes `COELACANTH_GOTENBERG_URL` to the `app` service by default.
+To try that path locally, set `client: "gotenberg"` in `config/coelacanth.yml` or export the equivalent environment-specific
+configuration before running the app container.
 
 If you are working inside Docker, make sure the `UID` environment variable matches your host user by exporting it in your shell
 startup file:

@@ -36,6 +36,7 @@ jobs:
         changelogFilePath: CHANGELOG.md
         includeRefIssues: true
         useGitmojis: true
+        includeInvalidCommits: true
 
     - name: Commit updated CHANGELOG.md
       run: |

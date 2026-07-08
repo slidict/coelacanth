@@ -32,6 +32,7 @@ it into contemporary ingestion stacks without bespoke glue code.
   multi-byte sources.
 - **Screenshot capture** – Fetches full-page PNGs via a configurable browser client so you can archive visual context alongside
   the extracted text.
+- **PDF generation** – Renders any URL to PDF through Ferrum so you can persist printer-friendly snapshots of source pages.
 - **Redirect resolution** – Follows HTTP redirects and long redirect chains to guarantee the extractor works on the final
   landing page.
 - **Configurable HTTP headers** – Inject custom headers (user agent, authorization, etc.) into the remote browser session for
@@ -82,6 +83,9 @@ result[:extraction] # => article metadata and body markdown
 result[:dom]        # => Oga DOM representation for downstream processing
 result[:screenshot] # => PNG screenshot as a binary string
 result[:response]   # => HTTP status, headers, and final URL
+
+pdf = Coelacanth.pdf("https://example.com/article")
+File.binwrite("article.pdf", pdf)
 ```
 
 # Plain-text morphology
@@ -181,6 +185,8 @@ development:
 - **Gotenberg client** – Set `client: "gotenberg"` to capture screenshots through Gotenberg's Chromium URL screenshot
   endpoint. Configure `gotenberg.url`, request timeouts, an optional `wait_delay`, an optional screenshot `user_agent`,
   and optional `extra_http_headers`.
+- **PDF generation** – `Coelacanth.pdf(url)` renders the URL with the Ferrum client and returns the generated PDF as a binary
+  string. Configure `remote_client` with a Chrome-compatible WebSocket endpoint before using this helper.
 - **Eyecatch image extraction** – Representative images are discovered automatically by checking Open Graph/Twitter metadata,
   Schema.org JSON-LD payloads, and high-signal `<img>` elements (hero/cover images, large dimensions, etc.). No manual XPath
   maintenance is required.

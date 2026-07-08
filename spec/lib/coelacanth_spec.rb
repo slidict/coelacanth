@@ -154,6 +154,17 @@ RSpec.describe Coelacanth do
     end
   end
 
+  describe ".pdf" do
+    let(:url) { "http://example.com" }
+    let(:ferrum_client) { instance_double(Coelacanth::Client::Ferrum, get_pdf: "%PDF data") }
+
+    it "generates a PDF through the Ferrum client" do
+      allow(Coelacanth::Client::Ferrum).to receive(:new).with(url).and_return(ferrum_client)
+
+      expect(Coelacanth.pdf(url)).to eq("%PDF data")
+    end
+  end
+
   describe "#config" do
     it "returns a Configure instance" do
       expect(Coelacanth.config).to be_an_instance_of(Coelacanth::Configure)

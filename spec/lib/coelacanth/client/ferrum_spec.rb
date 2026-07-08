@@ -79,4 +79,24 @@ RSpec.describe Coelacanth::Client::Ferrum do
       end
     end
   end
+
+  describe "#get_pdf" do
+    it "returns PDF data after waiting for network idle" do
+      expect(network).to receive(:wait_for_idle!).with(timeout: 5)
+      expect(browser).to receive(:pdf).and_return("%PDF data")
+
+      expect(client.get_pdf).to eq("%PDF data")
+    end
+
+    it "raises an error with sanitized remote client information" do
+      allow(browser).to receive(:pdf).and_raise(StandardError, "pdf failed")
+
+      expect { client.get_pdf }.to raise_error(RuntimeError) do |error|
+        expect(error.message).to include("RemoteClient: Ferrum::Browser")
+        expect(error.message).to include("object_id=")
+        expect(error.message).not_to include("#<")
+        expect(error.message).not_to include("SECRET")
+      end
+    end
+  end
 end

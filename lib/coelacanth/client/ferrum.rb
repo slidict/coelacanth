@@ -29,6 +29,13 @@ module Coelacanth::Client
       raise sanitized_remote_client_error(e)
     end
 
+    def get_pdf
+      wait_for_network_idle
+      remote_client.pdf
+    rescue => e
+      raise sanitized_remote_client_error(e)
+    end
+
     private
 
     def sanitized_remote_client_error(error)

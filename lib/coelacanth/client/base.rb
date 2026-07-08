@@ -23,5 +23,9 @@ module Coelacanth::Client
     def get_screenshot
       raise "Must be implemented in subclass"
     end
+
+    def get_pdf
+      raise "Must be implemented in subclass"
+    end
   end
 end

@@ -48,6 +48,10 @@ module Coelacanth
     }
   end
 
+  def self.pdf(url)
+    Client::Ferrum.new(url).get_pdf
+  end
+
   def self.client_class_for(client_name)
     case client_name
     when "screenshot_one"

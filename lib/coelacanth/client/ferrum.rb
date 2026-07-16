@@ -31,7 +31,7 @@ module Coelacanth::Client
 
     def get_pdf
       wait_for_network_idle
-      remote_client.pdf
+      remote_client.pdf(encoding: :binary)
     rescue => e
       raise sanitized_remote_client_error(e)
     end

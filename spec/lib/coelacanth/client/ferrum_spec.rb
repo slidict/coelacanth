@@ -83,7 +83,7 @@ RSpec.describe Coelacanth::Client::Ferrum do
   describe "#get_pdf" do
     it "returns PDF data after waiting for network idle" do
       expect(network).to receive(:wait_for_idle!).with(timeout: 5)
-      expect(browser).to receive(:pdf).and_return("%PDF data")
+      expect(browser).to receive(:pdf).with(encoding: :binary).and_return("%PDF data")
 
       expect(client.get_pdf).to eq("%PDF data")
     end

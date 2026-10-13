@@ -69,11 +69,30 @@ jobs:
           puts "next=#{target}"
           RUBY
 
+      - name: Prepare branch
+        id: branch
+        env:
+          NEXT_VERSION: ${{ steps.version.outputs.next }}
+        run: |
+          branch="bump-version/v${NEXT_VERSION}"
+          if git ls-remote --exit-code --heads origin "$branch"; then
+            git fetch origin "+refs/heads/$branch:refs/remotes/origin/$branch"
+            git checkout -B "$branch" "refs/remotes/origin/$branch"
+          else
+            status=$?
+            if [ "$status" -ne 2 ]; then
+              echo "Could not check remote branch" >&2
+              exit "$status"
+            fi
+            git checkout -B "$branch"
+          fi
+          echo "branch=$branch" >> "$GITHUB_OUTPUT"
+
       - name: Update version file
         env:
           NEXT_VERSION: ${{ steps.version.outputs.next }}
         run: |
-          ruby -e 'path = "lib/coelacanth/version.rb"; version = ENV.fetch("NEXT_VERSION"); content = File.read(path); updated = content.sub(/VERSION\s*=\s*"\d+\.\d+\.\d+"/, "VERSION = \"#{version}\""); abort "Version was not updated" if updated == content; File.write(path, updated)'
+          ruby -e 'path = "lib/coelacanth/version.rb"; version = ENV.fetch("NEXT_VERSION"); content = File.read(path); updated = content.sub(/VERSION\s*=\s*"\d+\.\d+\.\d+"/, "VERSION = \"#{version}\""); abort "Target version was not found" unless updated.include?("VERSION = \"#{version}\""); File.write(path, updated) unless updated == content'
 
       - name: Verify gemspec
         run: gem build coelacanth.gemspec
@@ -81,21 +100,27 @@ jobs:
       - name: Commit version bump
         env:
           NEXT_VERSION: ${{ steps.version.outputs.next }}
+          BRANCH: ${{ steps.branch.outputs.branch }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git checkout -B "bump-version/v${NEXT_VERSION}"
           git add lib/coelacanth/version.rb
-          git commit -m "chore: bump version to v${NEXT_VERSION}"
-          git push origin "bump-version/v${NEXT_VERSION}"
+          git diff --cached --quiet || git commit -m "chore: bump version to v${NEXT_VERSION}"
+          git push origin "$BRANCH"
 
       - name: Create pull request
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NEXT_VERSION: ${{ steps.version.outputs.next }}
+          BRANCH: ${{ steps.branch.outputs.branch }}
         run: |
-          gh pr create \
-            --base "${GITHUB_REF_NAME}" \
-            --head "bump-version/v${NEXT_VERSION}" \
-            --title "chore: bump version to v${NEXT_VERSION}" \
-            --body "Bump coelacanth gem version to v${NEXT_VERSION}."
+          count=$(gh pr list --head "$BRANCH" --state open --json number --jq 'length')
+          if [ "$count" -eq 0 ]; then
+            gh pr create \
+              --base "${GITHUB_REF_NAME}" \
+              --head "$BRANCH" \
+              --title "chore: bump version to v${NEXT_VERSION}" \
+              --body "Bump coelacanth gem version to v${NEXT_VERSION}."
+          else
+            echo "An open pull request already exists for $BRANCH"
+          fi

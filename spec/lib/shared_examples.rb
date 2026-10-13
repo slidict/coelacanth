@@ -46,9 +46,10 @@ RSpec.shared_examples "a remote client" do |config_values|
     allow(config).to receive(:read).with("remote_client.headers").and_return(config_values[:headers])
     allow(config).to receive(:read).with("remote_client.ws_url").and_return(config_values[:ws_url])
     allow(config).to receive(:read).with("remote_client.timeout").and_return(config_values[:timeout])
+    allow(config).to receive(:read).with("remote_client.protocol_timeout").and_return(nil)
 
     allow(Ferrum::Browser).to receive(:new).with(
-      ws_url: config_values[:ws_url], timeout: config_values[:timeout]
+      ws_url: config_values[:ws_url], timeout: config_values[:timeout], protocol_timeout: config_values[:timeout]
     ).and_return(browser)
 
     allow(browser).to receive(:page).and_return(page)

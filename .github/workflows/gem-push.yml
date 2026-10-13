@@ -26,6 +26,17 @@ jobs:
         version=$(echo "${GITHUB_REF#refs/tags/}")
         echo "version=$version" >> $GITHUB_ENV
 
+    - name: Verify tag matches VERSION
+      run: |
+        ruby -e '
+          require "./lib/coelacanth/version"
+          tag = ENV.fetch("version")
+          unless tag.delete_prefix("v") == Coelacanth::VERSION
+            abort "Tag #{tag} does not match Coelacanth::VERSION #{Coelacanth::VERSION}"
+          end
+          puts "Tag #{tag} matches Coelacanth::VERSION #{Coelacanth::VERSION}"
+        '
+
     - name: Generate CHANGELOG
       id: changelog
       uses: requarks/changelog-action@v1

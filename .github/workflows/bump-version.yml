@@ -14,8 +14,7 @@ on:
           - major
 
 permissions:
-  contents: write
-  pull-requests: write
+  contents: read
 
 concurrency:
   group: bump-version

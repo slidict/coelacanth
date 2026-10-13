@@ -151,6 +151,7 @@ development:
   remote_client:
     ws_url: "ws://chrome:3000/chrome"
     timeout: 10
+    # protocol_timeout: 10
     wait_for_idle_timeout: 5
     headers:
 <% if (auth = ENV["COELACANTH_REMOTE_CLIENT_AUTHORIZATION"]).to_s.strip != "" %>
@@ -180,7 +181,9 @@ development:
 ```
 
 - **Ferrum client** – Requires a running Chrome instance that exposes the DevTools protocol via WebSocket. Configure the URL,
-  timeout, the network idle timeout, and any headers to inject.
+  timeout, the network idle timeout, and any headers to inject. `remote_client.timeout` is the overall command timeout;
+  `remote_client.protocol_timeout` bounds CDP responses and the target attach wait (ferrum >= 0.18) and defaults to
+  `remote_client.timeout` when omitted.
 - **ScreenshotOne client** – Supply an API key to offload screenshot capture to [ScreenshotOne](https://screenshotone.com/).
 - **Gotenberg client** – Set `client: "gotenberg"` to capture screenshots through Gotenberg's Chromium URL screenshot
   endpoint. Configure `gotenberg.url`, request timeouts, an optional `wait_delay`, an optional screenshot `user_agent`,

@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require "ferrum"
+require "tempfile"
 
 module Coelacanth::Client
   # Coelacanth::Client
@@ -74,14 +75,23 @@ module Coelacanth::Client
 
       headers = @config.read("remote_client.headers")
 
-      @remote_client = ::Ferrum::Browser.new(
-        ws_url: @config.read("remote_client.ws_url"),
-        timeout: @config.read("remote_client.timeout")
-      )
+      @remote_client = ::Ferrum::Browser.new(**remote_client_options)
 
       @remote_client.page.headers.set(headers) if headers && headers.any?
 
       @remote_client
+    end
+
+    # timeout: overall command timeout (page load, navigation).
+    # protocol_timeout: CDP response / target attach wait (ferrum >= 0.18, default 5s); falls back to timeout.
+    def remote_client_options
+      options = { ws_url: @config.read("remote_client.ws_url") }
+      timeout = @config.read("remote_client.timeout")
+      protocol_timeout = @config.read("remote_client.protocol_timeout") || timeout
+
+      options[:timeout] = timeout if timeout
+      options[:protocol_timeout] = protocol_timeout if protocol_timeout
+      options
     end
   end
 end

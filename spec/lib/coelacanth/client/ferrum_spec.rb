@@ -36,6 +36,41 @@ RSpec.describe Coelacanth::Client::Ferrum do
 
   let(:client) { described_class.new(url) }
 
+  describe "remote client options" do
+    def build_config(settings)
+      instance_double(Coelacanth::Configure).tap do |cfg|
+        allow(cfg).to receive(:read) { |key| settings[key] }
+      end
+    end
+
+    let(:ws_url) { "ws://example.test/devtools/browser/SECRET" }
+
+    it "falls back to timeout for protocol_timeout" do
+      described_class.new(url, build_config("remote_client.ws_url" => ws_url, "remote_client.timeout" => 120))
+
+      expect(::Ferrum::Browser).to have_received(:new).with(ws_url: ws_url, timeout: 120, protocol_timeout: 120)
+    end
+
+    it "passes timeout and protocol_timeout separately when both are set" do
+      described_class.new(
+        url,
+        build_config(
+          "remote_client.ws_url" => ws_url,
+          "remote_client.timeout" => 120,
+          "remote_client.protocol_timeout" => 30
+        )
+      )
+
+      expect(::Ferrum::Browser).to have_received(:new).with(ws_url: ws_url, timeout: 120, protocol_timeout: 30)
+    end
+
+    it "passes neither when both are unset" do
+      described_class.new(url, build_config("remote_client.ws_url" => ws_url))
+
+      expect(::Ferrum::Browser).to have_received(:new).with(ws_url: ws_url)
+    end
+  end
+
   describe "#get_response" do
     it "returns the response body even when waiting for idle times out" do
       expect(network).to receive(:wait_for_idle!).with(timeout: 5).and_raise(::Ferrum::TimeoutError)

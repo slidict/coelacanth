@@ -2,11 +2,60 @@ name: Ruby Gem
 
 on:
   push:
-    tags: [ 'v*' ]
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: gem-push
+  cancel-in-progress: false
 
 jobs:
-  build:
+  check:
+    name: Check version and tag
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      tag: ${{ steps.version.outputs.tag }}
+      needed: ${{ steps.tag.outputs.needed }}
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Read VERSION
+      id: version
+      run: |
+        version=$(sed -n 's/^[[:space:]]*VERSION[[:space:]]*=[[:space:]]*"\([^"]*\)".*/\1/p' lib/coelacanth/version.rb)
+        if [ -z "$version" ]; then
+          echo "::error::Coelacanth::VERSION not found in lib/coelacanth/version.rb"
+          exit 1
+        fi
+        echo "version=$version" >> "$GITHUB_OUTPUT"
+        echo "tag=v$version" >> "$GITHUB_OUTPUT"
+
+    - name: Create tag if missing
+      id: tag
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        TAG: ${{ steps.version.outputs.tag }}
+      run: |
+        if [ -n "$(git ls-remote --tags origin "refs/tags/$TAG")" ]; then
+          echo "Tag $TAG already exists. Skipping publish."
+          echo "needed=false" >> "$GITHUB_OUTPUT"
+          exit 0
+        fi
+        gh api "repos/$GITHUB_REPOSITORY/git/refs" --method POST -f ref="refs/tags/$TAG" -f sha="$GITHUB_SHA"
+        echo "needed=true" >> "$GITHUB_OUTPUT"
+
+  publish:
     name: Build + Publish
+    needs: check
+    if: needs.check.outputs.needed == 'true'
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -20,18 +69,12 @@ jobs:
       with:
         ruby-version: 3.4.3
 
-    - name: Extract version
-      id: version
-      run: |
-        version=$(echo "${GITHUB_REF#refs/tags/}")
-        echo "version=$version" >> $GITHUB_ENV
-
     - name: Generate CHANGELOG
       id: changelog
       uses: requarks/changelog-action@v1
       with:
         token: ${{ secrets.GITHUB_TOKEN }}
-        tag: ${{ env.version }}
+        tag: ${{ needs.check.outputs.tag }}
         writeToFile: true
         changelogFilePath: CHANGELOG.md
         includeRefIssues: true
@@ -43,7 +86,7 @@ jobs:
         git config user.name "github-actions"
         git config user.email "github-actions@github.com"
         git add CHANGELOG.md
-        git commit -m "docs: update CHANGELOG for ${{ env.version }}" || echo "No changes to commit"
+        git commit -m "docs: update CHANGELOG for ${{ needs.check.outputs.tag }}" || echo "No changes to commit"
         git push origin HEAD:main
       continue-on-error: true
 
@@ -51,8 +94,8 @@ jobs:
       uses: ncipollo/release-action@v1
       with:
         allowUpdates: true
-        tag: ${{ env.version }}
-        name: ${{ env.version }}
+        tag: ${{ needs.check.outputs.tag }}
+        name: ${{ needs.check.outputs.tag }}
         body: ${{ steps.changelog.outputs.changes }}
         token: ${{ secrets.GITHUB_TOKEN }}
 

@@ -51,12 +51,30 @@ jobs:
         status=$(curl -sS -o versions.json -w '%{http_code}' https://rubygems.org/api/v1/versions/coelacanth.json)
         case "$status" in
           200)
-            if jq -e --arg v "$VERSION" 'any(.[]; .number == $v)' versions.json > /dev/null; then
-              echo "coelacanth $VERSION is already on RubyGems."
-              echo "published=true" >> "$GITHUB_OUTPUT"
-            else
-              echo "published=false" >> "$GITHUB_OUTPUT"
-            fi
+            # A 200 can still carry a CDN error page, and jq exits non-zero both for "no
+            # match" (1) and for a broken filter or body (2+). Those must not look alike:
+            # treating a parse failure as "not published" would push blindly.
+            jq -e 'type == "array"' versions.json > /dev/null 2>&1 || {
+              echo "::error::RubyGems returned a 200 whose body is not a JSON array"
+              exit 1
+            }
+            set +e
+            jq -e --arg v "$VERSION" 'any(.[]; .number == $v)' versions.json > /dev/null
+            found=$?
+            set -e
+            case "$found" in
+              0)
+                echo "coelacanth $VERSION is already on RubyGems."
+                echo "published=true" >> "$GITHUB_OUTPUT"
+                ;;
+              1)
+                echo "published=false" >> "$GITHUB_OUTPUT"
+                ;;
+              *)
+                echo "::error::jq failed to evaluate the RubyGems response (exit $found)"
+                exit 1
+                ;;
+            esac
             ;;
           404)
             echo "coelacanth is not on RubyGems yet (first release)."
@@ -72,6 +90,11 @@ jobs:
     # Release exist. Gating the whole job on publication state alone would strand a run
     # that pushed the gem but then failed at tagging: the next run would see the version
     # published, skip everything, and the release could never be completed.
+    #
+    # The one state this cannot repair by itself is "published but untagged": the commit
+    # whose source became the published gem is not knowable from here, and tagging the
+    # current HEAD would point the tag at code that is not what is on RubyGems. That is
+    # reported for a human instead of guessed at.
     - name: Decide whether anything is left to do
       id: state
       env:
@@ -90,11 +113,14 @@ jobs:
           released=false
         fi
         echo "published=$PUBLISHED tagged=$tagged released=$released"
-        if [ "$PUBLISHED" = true ] && [ "$tagged" = true ] && [ "$released" = true ]; then
-          echo "$TAG is fully released. Nothing to do."
-          echo "needed=false" >> "$GITHUB_OUTPUT"
-        else
+        if [ "$PUBLISHED" = true ] && [ "$tagged" = false ]; then
+          echo "::warning::$TAG is on RubyGems but has no tag. The commit that produced the published gem cannot be determined here, so the tag is not created automatically. Create it by hand at that commit."
+        fi
+        if [ "$PUBLISHED" = false ] || { [ "$tagged" = true ] && [ "$released" = false ]; }; then
           echo "needed=true" >> "$GITHUB_OUTPUT"
+        else
+          echo "$TAG needs nothing this workflow can do."
+          echo "needed=false" >> "$GITHUB_OUTPUT"
         fi
 
   # Two guards prevent double publishing:
@@ -123,8 +149,11 @@ jobs:
       with:
         ruby-version: 3.4.3
 
-    # Each push treats "this version is already on this host" as success, so a
-    # re-run after a partial failure gets past the host that already has it.
+    # Each push treats "this version is already on this host" as success, so a re-run
+    # after a partial failure gets past the host that already has it. "Repushing of gem
+    # versions is not allowed" is deliberately NOT tolerated: RubyGems returns it for a
+    # yanked version too, and the versions API omits yanked versions, so swallowing it
+    # would turn a rejected push into a green release with no installable gem.
     - name: Publish to GPR
       if: needs.check.outputs.published == 'false'
       run: |
@@ -137,7 +166,7 @@ jobs:
           printf '%s\n' "$output"
         else
           printf '%s\n' "$output"
-          printf '%s' "$output" | grep -qiE 'already been pushed|already exists|repushing of gem versions is not allowed' || exit 1
+          printf '%s' "$output" | grep -qiE 'already been pushed|already exists' || exit 1
           echo "::notice::this version is already published on this host; treating as success"
         fi
       env:
@@ -156,15 +185,19 @@ jobs:
           printf '%s\n' "$output"
         else
           printf '%s\n' "$output"
-          printf '%s' "$output" | grep -qiE 'already been pushed|already exists|repushing of gem versions is not allowed' || exit 1
+          printf '%s' "$output" | grep -qiE 'already been pushed|already exists' || exit 1
           echo "::notice::this version is already published on this host; treating as success"
         fi
       env:
         GEM_HOST_API_KEY: "${{ secrets.RUBYGEMS_AUTH_TOKEN }}"
 
-    # Must run before `Update GitHub Release`: release-action creates the tag
-    # itself when it is missing. Never moves an existing tag.
+    # Only tags a run that actually published, so the tag points at the commit whose
+    # source became the gem. A run recovering a missing Release must not tag, because its
+    # HEAD has moved past what was published.
+    # Must run before `Update GitHub Release`: release-action creates the tag itself when
+    # it is missing. Never moves an existing tag.
     - name: Create release tag
+      if: needs.check.outputs.published == 'false'
       env:
         GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         TAG: ${{ needs.check.outputs.tag }}
@@ -187,7 +220,12 @@ jobs:
         useGitmojis: true
         includeInvalidCommits: true
 
+    # Only a run that published commits the changelog. A recovery run must not: the commit
+    # lands on main, which starts another run, which would recover again and commit again.
+    # While the Release step kept failing that would never stop. Generation itself stays
+    # unguarded so a recovery run still has release notes to publish.
     - name: Commit updated CHANGELOG.md
+      if: needs.check.outputs.published == 'false'
       run: |
         git config user.name "github-actions"
         git config user.email "github-actions@github.com"

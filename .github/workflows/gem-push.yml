@@ -145,8 +145,11 @@ jobs:
   #   run started by the CHANGELOG commit queues behind the release and then sees the
   #   version as published.
   #
-  # The job itself runs while the tag or the GitHub Release is still missing, even once the
-  # gem is published, so a run that published and then failed can finish on a re-run.
+  # The job also runs when the gem is published and the tag exists but the GitHub Release
+  # is missing, so a run that failed at the Release step can finish on a re-run. A
+  # published version with no tag is not retried here: the `state` step warns, and a human
+  # creates the tag at the commit that produced the gem, because that commit cannot be
+  # established from a later run.
   publish:
     name: Build + Publish
     needs: check

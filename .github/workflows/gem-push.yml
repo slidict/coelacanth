@@ -18,11 +18,11 @@ jobs:
     name: Check version and tag
     runs-on: ubuntu-latest
     permissions:
-      contents: write
+      contents: read
     outputs:
       version: ${{ steps.version.outputs.version }}
       tag: ${{ steps.version.outputs.tag }}
-      needed: ${{ steps.tag.outputs.needed }}
+      needed: ${{ steps.published.outputs.needed }}
 
     steps:
     - uses: actions/checkout@v3
@@ -38,20 +38,40 @@ jobs:
         echo "version=$version" >> "$GITHUB_OUTPUT"
         echo "tag=v$version" >> "$GITHUB_OUTPUT"
 
-    - name: Create tag if missing
-      id: tag
+    # Gate on publication state, not on the tag (#125). The tag used to be
+    # created here before publishing, so a failed publish left a tag behind
+    # and every re-run skipped publishing. The tag is now created in
+    # `publish` after both pushes succeed.
+    - name: Check RubyGems for this version
+      id: published
       env:
-        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        TAG: ${{ steps.version.outputs.tag }}
+        VERSION: ${{ steps.version.outputs.version }}
       run: |
-        if [ -n "$(git ls-remote --tags origin "refs/tags/$TAG")" ]; then
-          echo "Tag $TAG already exists. Skipping publish."
-          echo "needed=false" >> "$GITHUB_OUTPUT"
-          exit 0
-        fi
-        gh api "repos/$GITHUB_REPOSITORY/git/refs" --method POST -f ref="refs/tags/$TAG" -f sha="$GITHUB_SHA"
-        echo "needed=true" >> "$GITHUB_OUTPUT"
+        status=$(curl -sS -o versions.json -w '%{http_code}' https://rubygems.org/api/v1/versions/coelacanth.json)
+        case "$status" in
+          200)
+            if jq -e --arg v "$VERSION" 'any(.[]; .number == $v)' versions.json > /dev/null; then
+              echo "coelacanth $VERSION is already on RubyGems. Skipping publish."
+              echo "needed=false" >> "$GITHUB_OUTPUT"
+            else
+              echo "needed=true" >> "$GITHUB_OUTPUT"
+            fi
+            ;;
+          404)
+            echo "coelacanth is not on RubyGems yet (first release)."
+            echo "needed=true" >> "$GITHUB_OUTPUT"
+            ;;
+          *)
+            echo "::error::Unexpected HTTP status $status from RubyGems versions API"
+            exit 1
+            ;;
+        esac
 
+  # Two guards prevent double publishing:
+  # - `if: needs.check.outputs.needed == 'true'` is false once the version is on RubyGems.
+  # - `concurrency: { group: gem-push, cancel-in-progress: false }` serialises runs, so the
+  #   run started by the CHANGELOG commit queues behind the release and then sees the
+  #   version as published.
   publish:
     name: Build + Publish
     needs: check
@@ -68,6 +88,56 @@ jobs:
       uses: ruby/setup-ruby@v1
       with:
         ruby-version: 3.4.3
+
+    # Each push treats "this version is already on this host" as success, so a
+    # re-run after a partial failure gets past the host that already has it.
+    - name: Publish to GPR
+      run: |
+        mkdir -p $HOME/.gem
+        touch $HOME/.gem/credentials
+        chmod 0600 $HOME/.gem/credentials
+        printf -- "---\n:github: ${GEM_HOST_API_KEY}\n" > $HOME/.gem/credentials
+        gem build *.gemspec
+        if output=$(gem push --KEY github --host https://rubygems.pkg.github.com/${OWNER} *.gem 2>&1); then
+          printf '%s\n' "$output"
+        else
+          printf '%s\n' "$output"
+          printf '%s' "$output" | grep -qiE 'already been pushed|already exists|repushing of gem versions is not allowed' || exit 1
+          echo "::notice::this version is already published on this host; treating as success"
+        fi
+      env:
+        GEM_HOST_API_KEY: "Bearer ${{ secrets.GITHUB_TOKEN }}"
+        OWNER: ${{ github.repository_owner }}
+
+    - name: Publish to RubyGems
+      run: |
+        mkdir -p $HOME/.gem
+        touch $HOME/.gem/credentials
+        chmod 0600 $HOME/.gem/credentials
+        printf -- "---\n:rubygems_api_key: ${GEM_HOST_API_KEY}\n" > $HOME/.gem/credentials
+        gem build *.gemspec
+        if output=$(gem push *.gem 2>&1); then
+          printf '%s\n' "$output"
+        else
+          printf '%s\n' "$output"
+          printf '%s' "$output" | grep -qiE 'already been pushed|already exists|repushing of gem versions is not allowed' || exit 1
+          echo "::notice::this version is already published on this host; treating as success"
+        fi
+      env:
+        GEM_HOST_API_KEY: "${{ secrets.RUBYGEMS_AUTH_TOKEN }}"
+
+    # Must run before `Update GitHub Release`: release-action creates the tag
+    # itself when it is missing. Never moves an existing tag.
+    - name: Create release tag
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        TAG: ${{ needs.check.outputs.tag }}
+      run: |
+        if [ -n "$(git ls-remote --tags origin "refs/tags/$TAG")" ]; then
+          echo "Tag $TAG already exists. Leaving it as is."
+          exit 0
+        fi
+        gh api "repos/$GITHUB_REPOSITORY/git/refs" --method POST -f ref="refs/tags/$TAG" -f sha="$GITHUB_SHA"
 
     - name: Generate CHANGELOG
       id: changelog
@@ -98,26 +168,3 @@ jobs:
         name: ${{ needs.check.outputs.tag }}
         body: ${{ steps.changelog.outputs.changes }}
         token: ${{ secrets.GITHUB_TOKEN }}
-
-    - name: Publish to GPR
-      run: |
-        mkdir -p $HOME/.gem
-        touch $HOME/.gem/credentials
-        chmod 0600 $HOME/.gem/credentials
-        printf -- "---\n:github: ${GEM_HOST_API_KEY}\n" > $HOME/.gem/credentials
-        gem build *.gemspec
-        gem push --KEY github --host https://rubygems.pkg.github.com/${OWNER} *.gem
-      env:
-        GEM_HOST_API_KEY: "Bearer ${{ secrets.GITHUB_TOKEN }}"
-        OWNER: ${{ github.repository_owner }}
-
-    - name: Publish to RubyGems
-      run: |
-        mkdir -p $HOME/.gem
-        touch $HOME/.gem/credentials
-        chmod 0600 $HOME/.gem/credentials
-        printf -- "---\n:rubygems_api_key: ${GEM_HOST_API_KEY}\n" > $HOME/.gem/credentials
-        gem build *.gemspec
-        gem push *.gem
-      env:
-        GEM_HOST_API_KEY: "${{ secrets.RUBYGEMS_AUTH_TOKEN }}"

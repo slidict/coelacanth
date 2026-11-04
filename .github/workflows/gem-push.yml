@@ -18,11 +18,12 @@ jobs:
     name: Check version and tag
     runs-on: ubuntu-latest
     permissions:
-      contents: write
+      contents: read
     outputs:
       version: ${{ steps.version.outputs.version }}
       tag: ${{ steps.version.outputs.tag }}
-      needed: ${{ steps.tag.outputs.needed }}
+      published: ${{ steps.published.outputs.published }}
+      needed: ${{ steps.state.outputs.needed }}
 
     steps:
     - uses: actions/checkout@v3
@@ -38,20 +39,117 @@ jobs:
         echo "version=$version" >> "$GITHUB_OUTPUT"
         echo "tag=v$version" >> "$GITHUB_OUTPUT"
 
-    - name: Create tag if missing
-      id: tag
+    # Gate the gem pushes on publication state, not on the tag (#125). The tag used
+    # to be created here before publishing, so a failed publish left a tag behind and
+    # every re-run skipped publishing. The tag is now created in `publish`, after both
+    # pushes succeed.
+    - name: Check RubyGems for this version
+      id: published
+      env:
+        VERSION: ${{ steps.version.outputs.version }}
+      run: |
+        status=$(curl -sS -o versions.json -w '%{http_code}' https://rubygems.org/api/v1/versions/coelacanth.json)
+        case "$status" in
+          200)
+            # A 200 can still carry a CDN error page, and jq exits non-zero both for "no
+            # match" (1) and for a broken filter or body (2+). Those must not look alike:
+            # treating a parse failure as "not published" would push blindly.
+            jq -e 'type == "array"' versions.json > /dev/null 2>&1 || {
+              echo "::error::RubyGems returned a 200 whose body is not a JSON array"
+              exit 1
+            }
+            set +e
+            jq -e --arg v "$VERSION" 'any(.[]; .number == $v)' versions.json > /dev/null
+            found=$?
+            set -e
+            case "$found" in
+              0)
+                echo "coelacanth $VERSION is already on RubyGems."
+                echo "published=true" >> "$GITHUB_OUTPUT"
+                ;;
+              1)
+                echo "published=false" >> "$GITHUB_OUTPUT"
+                ;;
+              *)
+                echo "::error::jq failed to evaluate the RubyGems response (exit $found)"
+                exit 1
+                ;;
+            esac
+            ;;
+          404)
+            echo "coelacanth is not on RubyGems yet (first release)."
+            echo "published=false" >> "$GITHUB_OUTPUT"
+            ;;
+          *)
+            echo "::error::Unexpected HTTP status $status from RubyGems versions API"
+            exit 1
+            ;;
+        esac
+
+    # A release is finished only when the gem is published *and* the tag and the GitHub
+    # Release exist. Gating the whole job on publication state alone would strand a run
+    # that pushed the gem but then failed at tagging: the next run would see the version
+    # published, skip everything, and the release could never be completed.
+    #
+    # The one state this cannot repair by itself is "published but untagged": the commit
+    # whose source became the published gem is not knowable from here, and tagging the
+    # current HEAD would point the tag at code that is not what is on RubyGems. That is
+    # reported for a human instead of guessed at.
+    - name: Decide whether anything is left to do
+      id: state
       env:
         GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         TAG: ${{ steps.version.outputs.tag }}
+        PUBLISHED: ${{ steps.published.outputs.published }}
       run: |
-        if [ -n "$(git ls-remote --tags origin "refs/tags/$TAG")" ]; then
-          echo "Tag $TAG already exists. Skipping publish."
-          echo "needed=false" >> "$GITHUB_OUTPUT"
-          exit 0
+        # Only a confirmed absence counts as absent. A failed lookup must not read as
+        # "missing": that would let the job proceed and, once the service recovered,
+        # have release-action overwrite a real release body with a regenerated one.
+        if ! listing=$(git ls-remote --tags origin "refs/tags/$TAG" 2>&1); then
+          echo "::error::could not read tags from origin: $listing"
+          exit 1
         fi
-        gh api "repos/$GITHUB_REPOSITORY/git/refs" --method POST -f ref="refs/tags/$TAG" -f sha="$GITHUB_SHA"
-        echo "needed=true" >> "$GITHUB_OUTPUT"
+        if [ -n "$listing" ]; then
+          tagged=true
+        else
+          tagged=false
+        fi
+        set +e
+        gh api "repos/$GITHUB_REPOSITORY/releases/tags/$TAG" > /dev/null 2> release_err
+        rc=$?
+        set -e
+        if [ "$rc" -eq 0 ]; then
+          released=true
+        elif grep -qi 'HTTP 404' release_err; then
+          released=false
+        else
+          echo "::error::could not determine whether the release for $TAG exists"
+          cat release_err
+          exit 1
+        fi
+        echo "published=$PUBLISHED tagged=$tagged released=$released"
+        if [ "$PUBLISHED" = true ] && [ "$tagged" = false ]; then
+          echo "::warning::$TAG is on RubyGems but has no tag. The commit that produced the published gem cannot be determined here, so the tag is not created automatically. Create it by hand at that commit."
+        fi
+        if [ "$PUBLISHED" = false ] || { [ "$tagged" = true ] && [ "$released" = false ]; }; then
+          echo "needed=true" >> "$GITHUB_OUTPUT"
+        else
+          echo "$TAG needs nothing this workflow can do."
+          echo "needed=false" >> "$GITHUB_OUTPUT"
+        fi
 
+  # Two guards prevent double publishing:
+  # - the gem pushes below run only when `needs.check.outputs.published == 'false'`, so a
+  #   version already on RubyGems is never pushed again.
+  # - `concurrency: { group: gem-push, cancel-in-progress: false }` serialises runs, so the
+  #   run started by the CHANGELOG commit queues behind the release and then sees the
+  #   version as published.
+  #
+  # The job also runs when the gem is published and the tag exists but the GitHub Release
+  # is missing, so a run that failed at the Release step can finish on a re-run. A
+  # published version with no tag is not retried here: the `state` step warns, and a human
+  # creates the tag at the commit that produced the gem, because that commit cannot be
+  # established from a later run.
   publish:
     name: Build + Publish
     needs: check
@@ -69,6 +167,65 @@ jobs:
       with:
         ruby-version: 3.4.3
 
+    # Each push treats "this version is already on this host" as success, so a re-run
+    # after a partial failure gets past the host that already has it. "Repushing of gem
+    # versions is not allowed" is deliberately NOT tolerated: RubyGems returns it for a
+    # yanked version too, and the versions API omits yanked versions, so swallowing it
+    # would turn a rejected push into a green release with no installable gem.
+    - name: Publish to GPR
+      if: needs.check.outputs.published == 'false'
+      run: |
+        mkdir -p $HOME/.gem
+        touch $HOME/.gem/credentials
+        chmod 0600 $HOME/.gem/credentials
+        printf -- "---\n:github: ${GEM_HOST_API_KEY}\n" > $HOME/.gem/credentials
+        gem build *.gemspec
+        if output=$(gem push --KEY github --host https://rubygems.pkg.github.com/${OWNER} *.gem 2>&1); then
+          printf '%s\n' "$output"
+        else
+          printf '%s\n' "$output"
+          printf '%s' "$output" | grep -qiE 'already been pushed|already exists' || exit 1
+          echo "::notice::this version is already published on this host; treating as success"
+        fi
+      env:
+        GEM_HOST_API_KEY: "Bearer ${{ secrets.GITHUB_TOKEN }}"
+        OWNER: ${{ github.repository_owner }}
+
+    - name: Publish to RubyGems
+      if: needs.check.outputs.published == 'false'
+      run: |
+        mkdir -p $HOME/.gem
+        touch $HOME/.gem/credentials
+        chmod 0600 $HOME/.gem/credentials
+        printf -- "---\n:rubygems_api_key: ${GEM_HOST_API_KEY}\n" > $HOME/.gem/credentials
+        gem build *.gemspec
+        if output=$(gem push *.gem 2>&1); then
+          printf '%s\n' "$output"
+        else
+          printf '%s\n' "$output"
+          printf '%s' "$output" | grep -qiE 'already been pushed|already exists' || exit 1
+          echo "::notice::this version is already published on this host; treating as success"
+        fi
+      env:
+        GEM_HOST_API_KEY: "${{ secrets.RUBYGEMS_AUTH_TOKEN }}"
+
+    # Only tags a run that actually published, so the tag points at the commit whose
+    # source became the gem. A run recovering a missing Release must not tag, because its
+    # HEAD has moved past what was published.
+    # Must run before `Update GitHub Release`: release-action creates the tag itself when
+    # it is missing. Never moves an existing tag.
+    - name: Create release tag
+      if: needs.check.outputs.published == 'false'
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        TAG: ${{ needs.check.outputs.tag }}
+      run: |
+        if [ -n "$(git ls-remote --tags origin "refs/tags/$TAG")" ]; then
+          echo "Tag $TAG already exists. Leaving it as is."
+          exit 0
+        fi
+        gh api "repos/$GITHUB_REPOSITORY/git/refs" --method POST -f ref="refs/tags/$TAG" -f sha="$GITHUB_SHA"
+
     - name: Generate CHANGELOG
       id: changelog
       uses: requarks/changelog-action@v1
@@ -81,7 +238,12 @@ jobs:
         useGitmojis: true
         includeInvalidCommits: true
 
+    # Only a run that published commits the changelog. A recovery run must not: the commit
+    # lands on main, which starts another run, which would recover again and commit again.
+    # While the Release step kept failing that would never stop. Generation itself stays
+    # unguarded so a recovery run still has release notes to publish.
     - name: Commit updated CHANGELOG.md
+      if: needs.check.outputs.published == 'false'
       run: |
         git config user.name "github-actions"
         git config user.email "github-actions@github.com"
@@ -98,26 +260,3 @@ jobs:
         name: ${{ needs.check.outputs.tag }}
         body: ${{ steps.changelog.outputs.changes }}
         token: ${{ secrets.GITHUB_TOKEN }}
-
-    - name: Publish to GPR
-      run: |
-        mkdir -p $HOME/.gem
-        touch $HOME/.gem/credentials
-        chmod 0600 $HOME/.gem/credentials
-        printf -- "---\n:github: ${GEM_HOST_API_KEY}\n" > $HOME/.gem/credentials
-        gem build *.gemspec
-        gem push --KEY github --host https://rubygems.pkg.github.com/${OWNER} *.gem
-      env:
-        GEM_HOST_API_KEY: "Bearer ${{ secrets.GITHUB_TOKEN }}"
-        OWNER: ${{ github.repository_owner }}
-
-    - name: Publish to RubyGems
-      run: |
-        mkdir -p $HOME/.gem
-        touch $HOME/.gem/credentials
-        chmod 0600 $HOME/.gem/credentials
-        printf -- "---\n:rubygems_api_key: ${GEM_HOST_API_KEY}\n" > $HOME/.gem/credentials
-        gem build *.gemspec
-        gem push *.gem
-      env:
-        GEM_HOST_API_KEY: "${{ secrets.RUBYGEMS_AUTH_TOKEN }}"

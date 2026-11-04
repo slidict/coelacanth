@@ -102,15 +102,30 @@ jobs:
         TAG: ${{ steps.version.outputs.tag }}
         PUBLISHED: ${{ steps.published.outputs.published }}
       run: |
-        if [ -n "$(git ls-remote --tags origin "refs/tags/$TAG")" ]; then
+        # Only a confirmed absence counts as absent. A failed lookup must not read as
+        # "missing": that would let the job proceed and, once the service recovered,
+        # have release-action overwrite a real release body with a regenerated one.
+        if ! listing=$(git ls-remote --tags origin "refs/tags/$TAG" 2>&1); then
+          echo "::error::could not read tags from origin: $listing"
+          exit 1
+        fi
+        if [ -n "$listing" ]; then
           tagged=true
         else
           tagged=false
         fi
-        if gh api "repos/$GITHUB_REPOSITORY/releases/tags/$TAG" > /dev/null 2>&1; then
+        set +e
+        gh api "repos/$GITHUB_REPOSITORY/releases/tags/$TAG" > /dev/null 2> release_err
+        rc=$?
+        set -e
+        if [ "$rc" -eq 0 ]; then
           released=true
-        else
+        elif grep -qi 'HTTP 404' release_err; then
           released=false
+        else
+          echo "::error::could not determine whether the release for $TAG exists"
+          cat release_err
+          exit 1
         fi
         echo "published=$PUBLISHED tagged=$tagged released=$released"
         if [ "$PUBLISHED" = true ] && [ "$tagged" = false ]; then

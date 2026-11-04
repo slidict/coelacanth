@@ -22,7 +22,8 @@ jobs:
     outputs:
       version: ${{ steps.version.outputs.version }}
       tag: ${{ steps.version.outputs.tag }}
-      needed: ${{ steps.published.outputs.needed }}
+      published: ${{ steps.published.outputs.published }}
+      needed: ${{ steps.state.outputs.needed }}
 
     steps:
     - uses: actions/checkout@v3
@@ -38,10 +39,10 @@ jobs:
         echo "version=$version" >> "$GITHUB_OUTPUT"
         echo "tag=v$version" >> "$GITHUB_OUTPUT"
 
-    # Gate on publication state, not on the tag (#125). The tag used to be
-    # created here before publishing, so a failed publish left a tag behind
-    # and every re-run skipped publishing. The tag is now created in
-    # `publish` after both pushes succeed.
+    # Gate the gem pushes on publication state, not on the tag (#125). The tag used
+    # to be created here before publishing, so a failed publish left a tag behind and
+    # every re-run skipped publishing. The tag is now created in `publish`, after both
+    # pushes succeed.
     - name: Check RubyGems for this version
       id: published
       env:
@@ -51,15 +52,15 @@ jobs:
         case "$status" in
           200)
             if jq -e --arg v "$VERSION" 'any(.[]; .number == $v)' versions.json > /dev/null; then
-              echo "coelacanth $VERSION is already on RubyGems. Skipping publish."
-              echo "needed=false" >> "$GITHUB_OUTPUT"
+              echo "coelacanth $VERSION is already on RubyGems."
+              echo "published=true" >> "$GITHUB_OUTPUT"
             else
-              echo "needed=true" >> "$GITHUB_OUTPUT"
+              echo "published=false" >> "$GITHUB_OUTPUT"
             fi
             ;;
           404)
             echo "coelacanth is not on RubyGems yet (first release)."
-            echo "needed=true" >> "$GITHUB_OUTPUT"
+            echo "published=false" >> "$GITHUB_OUTPUT"
             ;;
           *)
             echo "::error::Unexpected HTTP status $status from RubyGems versions API"
@@ -67,11 +68,44 @@ jobs:
             ;;
         esac
 
+    # A release is finished only when the gem is published *and* the tag and the GitHub
+    # Release exist. Gating the whole job on publication state alone would strand a run
+    # that pushed the gem but then failed at tagging: the next run would see the version
+    # published, skip everything, and the release could never be completed.
+    - name: Decide whether anything is left to do
+      id: state
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        TAG: ${{ steps.version.outputs.tag }}
+        PUBLISHED: ${{ steps.published.outputs.published }}
+      run: |
+        if [ -n "$(git ls-remote --tags origin "refs/tags/$TAG")" ]; then
+          tagged=true
+        else
+          tagged=false
+        fi
+        if gh api "repos/$GITHUB_REPOSITORY/releases/tags/$TAG" > /dev/null 2>&1; then
+          released=true
+        else
+          released=false
+        fi
+        echo "published=$PUBLISHED tagged=$tagged released=$released"
+        if [ "$PUBLISHED" = true ] && [ "$tagged" = true ] && [ "$released" = true ]; then
+          echo "$TAG is fully released. Nothing to do."
+          echo "needed=false" >> "$GITHUB_OUTPUT"
+        else
+          echo "needed=true" >> "$GITHUB_OUTPUT"
+        fi
+
   # Two guards prevent double publishing:
-  # - `if: needs.check.outputs.needed == 'true'` is false once the version is on RubyGems.
+  # - the gem pushes below run only when `needs.check.outputs.published == 'false'`, so a
+  #   version already on RubyGems is never pushed again.
   # - `concurrency: { group: gem-push, cancel-in-progress: false }` serialises runs, so the
   #   run started by the CHANGELOG commit queues behind the release and then sees the
   #   version as published.
+  #
+  # The job itself runs while the tag or the GitHub Release is still missing, even once the
+  # gem is published, so a run that published and then failed can finish on a re-run.
   publish:
     name: Build + Publish
     needs: check
@@ -92,6 +126,7 @@ jobs:
     # Each push treats "this version is already on this host" as success, so a
     # re-run after a partial failure gets past the host that already has it.
     - name: Publish to GPR
+      if: needs.check.outputs.published == 'false'
       run: |
         mkdir -p $HOME/.gem
         touch $HOME/.gem/credentials
@@ -110,6 +145,7 @@ jobs:
         OWNER: ${{ github.repository_owner }}
 
     - name: Publish to RubyGems
+      if: needs.check.outputs.published == 'false'
       run: |
         mkdir -p $HOME/.gem
         touch $HOME/.gem/credentials

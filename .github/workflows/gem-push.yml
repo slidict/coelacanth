@@ -167,6 +167,16 @@ jobs:
       with:
         ruby-version: 3.4.3
 
+    # The gem is built from this checkout, not from the tree the bump gate tested: main
+    # can move between the bump dispatch and this run, and the bump PR merge itself is
+    # not gated by a check. Testing here is what keeps an untested tree from reaching
+    # RubyGems.
+    - name: Run the rspec.
+      run: |
+        bundle config set frozen false
+        bundle install
+        bundle exec rspec
+
     # Each push treats "this version is already on this host" as success, so a re-run
     # after a partial failure gets past the host that already has it. "Repushing of gem
     # versions is not allowed" is deliberately NOT tolerated: RubyGems returns it for a

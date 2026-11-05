@@ -1,5 +1,7 @@
 FROM ruby:3.4-bookworm
 
+WORKDIR /app
+
 ARG UID
 
 RUN if [ "$UID" -ne "" ] ; then \
@@ -7,7 +9,5 @@ RUN if [ "$UID" -ne "" ] ; then \
     fi
 
 RUN apt-get update -qq && apt-get install -y git
-WORKDIR /app
-
 COPY . .
 RUN bundle install

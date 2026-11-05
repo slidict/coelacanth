@@ -97,6 +97,12 @@ jobs:
       - name: Verify gemspec
         run: gem build coelacanth.gemspec
 
+      - name: Run the rspec.
+        run: |
+          bundle config set frozen false
+          bundle install
+          bundle exec rspec
+
       - name: Commit version bump
         env:
           NEXT_VERSION: ${{ steps.version.outputs.next }}

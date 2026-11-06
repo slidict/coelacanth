@@ -138,6 +138,37 @@ jobs:
           echo "needed=false" >> "$GITHUB_OUTPUT"
         fi
 
+  # Tests live in their own job so the publishing job never resolves or executes
+  # third-party gem code while holding a write-scoped checkout token, and never before the
+  # RubyGems token is handed to a later step. The checkout here keeps no credentials.
+  #
+  # Skipped during release recovery (the gem is already published, only the GitHub Release
+  # is missing): there is no publish left to gate, so a red suite must not block finishing
+  # that release.
+  test:
+    name: Test before publish
+    needs: check
+    if: needs.check.outputs.needed == 'true' && needs.check.outputs.published == 'false'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+    - uses: actions/checkout@v3
+      with:
+        persist-credentials: false
+
+    - name: Set up Ruby 3.4
+      uses: ruby/setup-ruby@v1
+      with:
+        ruby-version: 3.4.3
+
+    - name: Run the rspec.
+      run: |
+        bundle config set frozen false
+        bundle install
+        bundle exec rspec
+
   # Two guards prevent double publishing:
   # - the gem pushes below run only when `needs.check.outputs.published == 'false'`, so a
   #   version already on RubyGems is never pushed again.
@@ -152,8 +183,16 @@ jobs:
   # established from a later run.
   publish:
     name: Build + Publish
-    needs: check
-    if: needs.check.outputs.needed == 'true'
+    needs: [check, test]
+    # `always()` is required because `test` is skipped during release recovery, and a
+    # skipped dependency would otherwise skip this job too. The explicit result checks keep
+    # the gate: a publish needs `test` to have succeeded, and a failed `check` still stops
+    # everything.
+    if: |
+      always() &&
+      needs.check.result == 'success' &&
+      needs.check.outputs.needed == 'true' &&
+      (needs.test.result == 'success' || needs.test.result == 'skipped')
     runs-on: ubuntu-latest
     permissions:
       contents: write

@@ -1,4 +1,6 @@
-FROM slidict/docker-rails:latest
+FROM ruby:3.4-bookworm
+
+WORKDIR /app
 
 ARG UID
 

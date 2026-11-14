@@ -19,10 +19,13 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+      packages: read
     outputs:
       version: ${{ steps.version.outputs.version }}
       tag: ${{ steps.version.outputs.tag }}
       published: ${{ steps.published.outputs.published }}
+      gpr_published: ${{ steps.gpr.outputs.gpr_published }}
+      release_needed: ${{ steps.state.outputs.release_needed }}
       needed: ${{ steps.state.outputs.needed }}
 
     steps:
@@ -86,6 +89,51 @@ jobs:
             ;;
         esac
 
+    # GitHub Packages is checked on its own: a version can be on RubyGems and still be
+    # missing here, and deciding the GPR push from the RubyGems lookup would never fill
+    # that gap.
+    #
+    # The versions endpoint returns a paginated JSON array whose `name` is the plain gem
+    # version (e.g. `0.4.2`), hence `--paginate`, `.[].name` and an exact whole-line match.
+    #
+    # Only a 404 counts as a confirmed absence: the package does not exist yet, so the
+    # next push is its first. Any other failure (403, another status, a body the filter
+    # cannot read, a network error) fails the step, the same rule as the tag and release
+    # lookups below.
+    #
+    # Only a successful lookup with a match yields `true`. A misread can therefore cause
+    # at most an extra push attempt, which the push already tolerates as a duplicate; it
+    # can never skip a push. A 404 would also come back if the owner were a user rather
+    # than an organisation, which errs in that same safe direction.
+    - name: Check GitHub Packages for this version
+      id: gpr
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        VERSION: ${{ steps.version.outputs.version }}
+        OWNER: ${{ github.repository_owner }}
+      run: |
+        set +e
+        gh api --paginate "orgs/$OWNER/packages/rubygems/coelacanth/versions" \
+          --jq '.[].name' > gpr_versions.txt 2> gpr_err
+        rc=$?
+        set -e
+        if [ "$rc" -eq 0 ]; then
+          if grep -Fxq "$VERSION" gpr_versions.txt; then
+            echo "coelacanth $VERSION is already on GitHub Packages."
+            gpr_published=true
+          else
+            gpr_published=false
+          fi
+        elif grep -qi 'HTTP 404' gpr_err; then
+          echo "coelacanth has no package on GitHub Packages yet (first push there)."
+          gpr_published=false
+        else
+          echo "::error::could not determine whether $VERSION is on GitHub Packages"
+          cat gpr_err
+          exit 1
+        fi
+        echo "gpr_published=$gpr_published" >> "$GITHUB_OUTPUT"
+
     # A release is finished only when the gem is published *and* the tag and the GitHub
     # Release exist. Gating the whole job on publication state alone would strand a run
     # that pushed the gem but then failed at tagging: the next run would see the version
@@ -95,12 +143,17 @@ jobs:
     # whose source became the published gem is not knowable from here, and tagging the
     # current HEAD would point the tag at code that is not what is on RubyGems. That is
     # reported for a human instead of guessed at.
+    #
+    # `release_needed` covers the RubyGems push, the tag and the Release. `needed` also
+    # turns on when only the GPR push is missing. It only ever widens the old decision,
+    # so every state that worked before behaves the same.
     - name: Decide whether anything is left to do
       id: state
       env:
         GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         TAG: ${{ steps.version.outputs.tag }}
         PUBLISHED: ${{ steps.published.outputs.published }}
+        GPR_PUBLISHED: ${{ steps.gpr.outputs.gpr_published }}
       run: |
         # Only a confirmed absence counts as absent. A failed lookup must not read as
         # "missing": that would let the job proceed and, once the service recovered,
@@ -127,11 +180,17 @@ jobs:
           cat release_err
           exit 1
         fi
-        echo "published=$PUBLISHED tagged=$tagged released=$released"
+        echo "published=$PUBLISHED gpr_published=$GPR_PUBLISHED tagged=$tagged released=$released"
         if [ "$PUBLISHED" = true ] && [ "$tagged" = false ]; then
           echo "::warning::$TAG is on RubyGems but has no tag. The commit that produced the published gem cannot be determined here, so the tag is not created automatically. Create it by hand at that commit."
         fi
         if [ "$PUBLISHED" = false ] || { [ "$tagged" = true ] && [ "$released" = false ]; }; then
+          release_needed=true
+        else
+          release_needed=false
+        fi
+        echo "release_needed=$release_needed" >> "$GITHUB_OUTPUT"
+        if [ "$release_needed" = true ] || [ "$GPR_PUBLISHED" = false ]; then
           echo "needed=true" >> "$GITHUB_OUTPUT"
         else
           echo "$TAG needs nothing this workflow can do."
@@ -144,11 +203,15 @@ jobs:
   #
   # Skipped during release recovery (the gem is already published, only the GitHub Release
   # is missing): there is no publish left to gate, so a red suite must not block finishing
-  # that release.
+  # that release. A run that only pushes to GitHub Packages is not that case: it does
+  # publish, so it is tested even though `published` is true.
   test:
     name: Test before publish
     needs: check
-    if: needs.check.outputs.needed == 'true' && needs.check.outputs.published == 'false'
+    if: |
+      needs.check.outputs.needed == 'true' &&
+      (needs.check.outputs.published == 'false' ||
+       needs.check.outputs.gpr_published == 'false')
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -170,14 +233,15 @@ jobs:
         bundle exec rspec
 
   # Two guards prevent double publishing:
-  # - the gem pushes below run only when `needs.check.outputs.published == 'false'`, so a
-  #   version already on RubyGems is never pushed again.
+  # - each gem push below runs only when its own host lacks the version: the GPR push on
+  #   `gpr_published == 'false'`, the RubyGems push on `published == 'false'`.
   # - `concurrency: { group: gem-push, cancel-in-progress: false }` serialises runs, so the
   #   run started by the CHANGELOG commit queues behind the release and then sees the
   #   version as published.
   #
   # The job also runs when the gem is published and the tag exists but the GitHub Release
-  # is missing, so a run that failed at the Release step can finish on a re-run. A
+  # is missing, so a run that failed at the Release step can finish on a re-run, and when
+  # the gem is on RubyGems but missing from GitHub Packages, so that push can catch up. A
   # published version with no tag is not retried here: the `state` step warns, and a human
   # creates the tag at the commit that produced the gem, because that commit cannot be
   # established from a later run.
@@ -211,8 +275,11 @@ jobs:
     # versions is not allowed" is deliberately NOT tolerated: RubyGems returns it for a
     # yanked version too, and the versions API omits yanked versions, so swallowing it
     # would turn a rejected push into a green release with no installable gem.
+    #
+    # The GPR push is gated on GitHub Packages state, not on RubyGems state, so a version
+    # that reached RubyGems but not GPR is still pushed here on a later run.
     - name: Publish to GPR
-      if: needs.check.outputs.published == 'false'
+      if: needs.check.outputs.gpr_published == 'false'
       run: |
         mkdir -p $HOME/.gem
         touch $HOME/.gem/credentials
@@ -265,8 +332,15 @@ jobs:
         fi
         gh api "repos/$GITHUB_REPOSITORY/git/refs" --method POST -f ref="refs/tags/$TAG" -f sha="$GITHUB_SHA"
 
+    # The changelog and the Release run only when the RubyGems push, the tag or the
+    # Release is still missing, never on a run that only pushes to GPR. This is required:
+    # release-action creates the tag itself when it is missing, so in the "on RubyGems
+    # but never tagged" state an unguarded GPR-only run would tag the current HEAD, not
+    # the commit that produced the published gem. It also keeps a GPR-only run from
+    # overwriting a good Release body with a regenerated one.
     - name: Generate CHANGELOG
       id: changelog
+      if: needs.check.outputs.release_needed == 'true'
       uses: requarks/changelog-action@v1
       with:
         token: ${{ secrets.GITHUB_TOKEN }}
@@ -279,8 +353,8 @@ jobs:
 
     # Only a run that published commits the changelog. A recovery run must not: the commit
     # lands on main, which starts another run, which would recover again and commit again.
-    # While the Release step kept failing that would never stop. Generation itself stays
-    # unguarded so a recovery run still has release notes to publish.
+    # While the Release step kept failing that would never stop. Generation itself is
+    # gated on `release_needed` only, so a recovery run still has release notes to publish.
     - name: Commit updated CHANGELOG.md
       if: needs.check.outputs.published == 'false'
       run: |
@@ -291,7 +365,9 @@ jobs:
         git push origin HEAD:main
       continue-on-error: true
 
+    # Gated on `release_needed`; see `Generate CHANGELOG` for why.
     - name: Update GitHub Release
+      if: needs.check.outputs.release_needed == 'true'
       uses: ncipollo/release-action@v1
       with:
         allowUpdates: true

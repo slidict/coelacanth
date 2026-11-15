@@ -16,6 +16,13 @@ RSpec.describe "compose.yml" do
     )
   end
 
+  it "passes UID to the app service at runtime" do
+    # The entrypoint reads it as an override of the mount owner, including UID=0 for root.
+    app = compose.fetch("services").fetch("app")
+
+    expect(app.fetch("environment")).to include("UID=${UID}")
+  end
+
   it "defines a Gotenberg service on the application network" do
     gotenberg = compose.fetch("services").fetch("gotenberg")
 

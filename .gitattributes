@@ -1,0 +1,5 @@
+# Shell scripts must keep LF in the working tree, whatever core.autocrlf says.
+# docker-entrypoint.sh is COPYed into the image: with CRLF the shebang reads as
+# `/bin/sh\r`, which does not exist, so the container cannot start at all. A
+# Windows checkout would otherwise produce an image that fails on startup.
+*.sh text eol=lf

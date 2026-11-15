@@ -15,3 +15,9 @@ RUN bundle install
 COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 RUN chmod 0755 /usr/local/bin/docker-entrypoint.sh
 ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh"]
+
+# An ENTRYPOINT with no CMD makes `docker run` with no command pass an empty
+# argument list to the script, which would exit 0 having done nothing on the root
+# path and fail inside setpriv on the other. Compose always supplies its own
+# `command`, so this only covers the bare `docker run`.
+CMD ["bash"]

@@ -56,6 +56,13 @@ RSpec.describe "Dockerfile" do
     # The UID to match depends on the host that mounts the checkout, not the build.
     expect(lines).not_to include(a_string_matching(/\AARG UID\b/))
   end
+
+  it "gives the entrypoint a default command" do
+    # With an ENTRYPOINT and no CMD, `docker run` with no command hands the script
+    # an empty argument list, which does nothing on the root path and fails inside
+    # setpriv on the other.
+    expect(lines).to include(a_string_matching(/\ACMD \[/))
+  end
 end
 
 RSpec.describe "docker-entrypoint.sh" do
@@ -75,6 +82,33 @@ RSpec.describe "docker-entrypoint.sh" do
 
     expect(guard).not_to be_nil
     expect(code[guard + 1]).to eq('exec "$@"')
+  end
+
+  it "gets out of the way when it is not root" do
+    # `docker compose run --user ...` already starts the container as that user,
+    # and useradd, chown and setpriv would all fail. Before this guard existed the
+    # container died there under `set -e`.
+    guard = code.index('if [ "$(id -u)" != 0 ]; then')
+
+    expect(guard).not_to be_nil
+    expect(code[guard + 1]).to eq('exec "$@"')
+  end
+
+  it "takes the group from the mount, not from the container" do
+    # Files written through the mount otherwise carry a group invented in the
+    # container, which means nothing on the host.
+    expect(code).to include("target_gid=$(stat -c %g /app)")
+  end
+
+  it "does not hand a system account's home to the user" do
+    # A UID matching a system account brings its own home, which is unusable:
+    # uid 100 owns /nonexistent and uid 1 owns a root-owned /usr/sbin. Chowning a
+    # system directory would be worse, so such a user gets a home of its own.
+    # The test is ownership, not -w, which is always true for root.
+    guard = code.index { |line| line.include?('stat -c %u "$home"') }
+
+    expect(guard).not_to be_nil
+    expect(code[guard + 1]).to eq("home=/home/container-$target")
   end
 
   it "hands the bundle path to the user before dropping privileges" do

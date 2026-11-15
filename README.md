@@ -256,9 +256,16 @@ Docker Compose also starts a `gotenberg` service and passes `COELACANTH_GOTENBER
 To try that path locally, set `client: "gotenberg"` in `config/coelacanth.yml` or export the equivalent environment-specific
 configuration before running the app container.
 
-Inside Docker, the `app` container runs commands as the user that owns your checkout, so files it writes through the mount
-stay owned by you. No setup is needed: the entrypoint reads the owner of `/app`. On Windows, where there is no host user to
-match, it runs as root.
+Inside Docker, `docker compose run` and `docker compose up` start the `app` container as the user that owns your checkout, so
+files it writes through the mount stay owned by you. No setup is needed: the entrypoint reads the owner of `/app`. On Windows,
+where there is no host user to match, it runs as root.
+
+`docker compose exec` does not go through the entrypoint, so it runs as root and can still leave root-owned files behind. Pass
+the user explicitly when you use it:
+
+```bash
+docker compose exec --user "$(id -u)" app bundle install
+```
 
 `UID` is optional. Set it only to override that user, or set `UID=0` to run as root. In `bash`, `UID` is read-only, so pass
 it with `env`:

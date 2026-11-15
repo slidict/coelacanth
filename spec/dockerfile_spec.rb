@@ -113,4 +113,17 @@ RSpec.describe "docker-entrypoint.sh" do
     # exec replaces the shell, so a step placed after it would silently never run.
     expect(code.last).to start_with('exec setpriv --reuid "$target"')
   end
+
+  it "has LF line endings" do
+    # It is COPYed into the image, so with CRLF the shebang reads as `/bin/sh\r`,
+    # which does not exist, and the container cannot start. Checked as bytes
+    # because the assertions above strip \r and would pass either way.
+    expect(File.binread("docker-entrypoint.sh")).not_to include("\r")
+  end
+
+  it "is pinned to LF in .gitattributes" do
+    # The byte check above passes on a Linux CI runner whatever the rule says, so
+    # only this catches the rule going missing and breaking Windows checkouts.
+    expect(File.read(".gitattributes")).to match(/^\*\.sh +text +eol=lf$/)
+  end
 end

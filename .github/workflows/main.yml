@@ -26,3 +26,40 @@ jobs:
     - run: bundle install
     - name: Run the rspec.
       run: bundle exec rspec
+
+  devcontainer:
+    name: Dev container
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+    - uses: actions/checkout@v3
+      with:
+        persist-credentials: false
+
+    - name: Build
+      run: docker compose build app
+
+    - name: Runs as the host user, and writes files that user owns
+      run: |
+        uid=$(docker compose run --rm -T --no-deps app id -u | tr -d '\r')
+        test "$uid" != 0
+        test "$uid" = "$(id -u)"
+        docker compose run --rm -T --no-deps app touch /app/ci-owner-check
+        test "$(stat -c %u ci-owner-check)" = "$(id -u)"
+        rm ci-owner-check
+
+    - name: rspec in the container
+      run: docker compose run --rm -T --no-deps app bundle exec rspec
+
+    - name: bundle install in the container
+      run: docker compose run --rm -T --no-deps app bundle install
+
+    # UID is readonly in bash, so `UID=... docker compose` fails; env sets it.
+    - name: The same with UID set explicitly
+      run: |
+        UID_VALUE=$(id -u)
+        uid=$(env UID="$UID_VALUE" docker compose run --rm -T --no-deps app id -u | tr -d '\r')
+        test "$uid" = "$UID_VALUE"
+        env UID="$UID_VALUE" docker compose run --rm -T --no-deps app bundle exec rspec

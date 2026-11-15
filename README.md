@@ -256,11 +256,15 @@ Docker Compose also starts a `gotenberg` service and passes `COELACANTH_GOTENBER
 To try that path locally, set `client: "gotenberg"` in `config/coelacanth.yml` or export the equivalent environment-specific
 configuration before running the app container.
 
-If you are working inside Docker, make sure the `UID` environment variable matches your host user by exporting it in your shell
-startup file:
+Inside Docker, the `app` container runs commands as the user that owns your checkout, so files it writes through the mount
+stay owned by you. No setup is needed: the entrypoint reads the owner of `/app`. On Windows, where there is no host user to
+match, it runs as root.
+
+`UID` is optional. Set it only to override that user, or set `UID=0` to run as root. In `bash`, `UID` is read-only, so pass
+it with `env`:
 
 ```bash
-export UID=${UID}
+env UID=0 docker compose run --rm app bash
 ```
 
 ## Development workflow

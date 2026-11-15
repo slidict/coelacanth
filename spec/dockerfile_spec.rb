@@ -31,4 +31,86 @@ RSpec.describe "Dockerfile" do
     expect(copy).not_to be_nil
     expect(workdir).to be < copy
   end
+
+  it "starts through the entrypoint that drops to the host user" do
+    # Without it the container runs as root and leaves root-owned files in the checkout.
+    expect(lines).to include(a_string_matching(/\AENTRYPOINT .*docker-entrypoint\.sh/))
+  end
+
+  it "copies the entrypoint outside the bind-mounted /app" do
+    # ./:/app masks the image's /app at runtime, so a script read from there would be
+    # whatever the host checkout holds.
+    copy = lines.find { |line| line.start_with?("COPY ") && line.include?("docker-entrypoint.sh") }
+    destination = copy&.split&.last
+
+    expect(destination).to start_with("/")
+    expect(destination).not_to start_with("/app")
+  end
+
+  it "has no numeric comparison against an empty string" do
+    # `[ "$UID" -ne "" ]` errors instead of evaluating false, so its body never ran.
+    expect(File.read("Dockerfile")).not_to include('-ne ""')
+  end
+
+  it "takes no UID at build time" do
+    # The UID to match depends on the host that mounts the checkout, not the build.
+    expect(lines).not_to include(a_string_matching(/\AARG UID\b/))
+  end
+end
+
+RSpec.describe "docker-entrypoint.sh" do
+  subject(:lines) { File.readlines("docker-entrypoint.sh").map(&:strip) }
+
+  let(:code) { lines.reject { |line| line.empty? || line.start_with?("#") } }
+
+  it "is a POSIX shell script that stops on the first error" do
+    # A failed useradd or chown must not fall through to running the command.
+    expect(lines.first).to eq("#!/bin/sh")
+    expect(code).to include("set -e")
+  end
+
+  it "runs as root when the UID is empty or 0" do
+    # Windows hosts have no host UID to match, and a mount owned by root needs root.
+    guard = code.index('if [ -z "$target" ] || [ "$target" = 0 ]; then')
+
+    expect(guard).not_to be_nil
+    expect(code[guard + 1]).to eq('exec "$@"')
+  end
+
+  it "hands the bundle path to the user before dropping privileges" do
+    # Gems are installed as root at build time, and bundle install has to write there.
+    chown = code.index('chown -R "$target" "$bundle_path"')
+    drop = code.index { |line| line.start_with?("exec setpriv ") }
+
+    expect(chown).not_to be_nil
+    expect(drop).not_to be_nil
+    expect(chown).to be < drop
+  end
+
+  it "rejects a UID that is not a number" do
+    # It is passed to useradd and setpriv, which must not see arbitrary text.
+    # Asserted as the branch's own lines rather than as "an exit 1 exists
+    # somewhere", which would still pass with this guard deleted.
+    guard = code.index("*[!0-9]*)")
+
+    expect(guard).not_to be_nil
+    expect(code[guard + 1]).to start_with("echo ")
+    expect(code[guard + 2]).to eq("exit 1")
+  end
+
+  it "points HOME at the user it switches to" do
+    # setpriv keeps the environment, so HOME would stay root's and Bundler would
+    # fall back to a temporary home.
+    home = code.index { |line| line.start_with?("HOME=") }
+    drop = code.index { |line| line.start_with?("exec setpriv ") }
+
+    expect(home).not_to be_nil
+    expect(code).to include("export HOME")
+    expect(home).to be < drop
+  end
+
+  it "drops privileges as the last thing it does" do
+    # exec replaces the shell, so a step placed after it would silently never run.
+    expect(code.last).to start_with('exec setpriv --reuid "$target"')
+  end
 end

@@ -66,10 +66,19 @@ RSpec.describe "gem-push workflow" do
   describe "the GPR push" do
     let(:run) { step(publish_steps, "Publish to GPR").fetch("run") }
 
-    it "builds from HEAD only for a version RubyGems does not have" do
-      # Building HEAD for an already-published version would put different code on GPR
-      # under a version number RubyGems already serves.
-      expect(run).to match(/if \[ "\$PUBLISHED" = false \]; then\s+gem build/)
+    it "never builds a gem of its own" do
+      # Running after the changelog steps, a rebuild would pick up the staged
+      # CHANGELOG.md through `git ls-files` and so differ from the published gem. The
+      # fresh path reuses what the RubyGems push built; the catch-up path downloads.
+      expect(run).not_to include("gem build")
+    end
+
+    it "fails rather than push when the published artifact is missing" do
+      guard = run.lines.index { |line| line.include?('[ ! -f "$gem_file" ]') }
+
+      expect(guard).not_to be_nil
+      expect(run.lines[guard + 1]).to include("::error::")
+      expect(run.lines[guard + 2].strip).to eq("exit 1")
     end
 
     it "mirrors the published artifact for a version RubyGems already has" do

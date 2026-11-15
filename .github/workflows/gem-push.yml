@@ -372,10 +372,13 @@ jobs:
     # under that burned version number, and only afterwards would the RubyGems push be
     # rejected. Now the RubyGems push fails first and this step never runs.
     #
-    # The build source depends on which case this is:
+    # Nothing is built here, in either case:
     #
-    # - This run published the version (`published == 'false'` in `check`): HEAD is the
-    #   source that became the release, so the gem built from it is the right artifact.
+    # - This run published the version (`published == 'false'` in `check`): the gem the
+    #   RubyGems push built is still in the workspace and is reused. Rebuilding would not
+    #   reproduce it, because `spec.files` comes from `git ls-files` and the changelog
+    #   steps above stage `CHANGELOG.md`, which is untracked before them — so a rebuild
+    #   would carry a file the published gem does not have.
     # - The version was already on RubyGems: `main` has moved on since, so building HEAD
     #   would put different code on GPR under a version RubyGems already serves, and a
     #   green suite at HEAD would not make it the released source. The artifact RubyGems
@@ -405,7 +408,11 @@ jobs:
         printf -- "---\n:github: ${GEM_HOST_API_KEY}\n" > $HOME/.gem/credentials
         gem_file="coelacanth-$VERSION.gem"
         if [ "$PUBLISHED" = false ]; then
-          gem build *.gemspec
+          if [ ! -f "$gem_file" ]; then
+            echo "::error::$gem_file is not in the workspace; the RubyGems push should have built it, and rebuilding here would not match what it published"
+            exit 1
+          fi
+          echo "Pushing the same artifact the RubyGems push built."
         else
           if ! status=$(curl -sSL -o "$gem_file" -w '%{http_code}' \
             "https://rubygems.org/downloads/$gem_file"); then

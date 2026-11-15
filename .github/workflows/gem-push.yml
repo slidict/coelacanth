@@ -19,10 +19,13 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+      packages: read
     outputs:
       version: ${{ steps.version.outputs.version }}
       tag: ${{ steps.version.outputs.tag }}
       published: ${{ steps.published.outputs.published }}
+      gpr_published: ${{ steps.gpr.outputs.gpr_published }}
+      release_needed: ${{ steps.state.outputs.release_needed }}
       needed: ${{ steps.state.outputs.needed }}
 
     steps:
@@ -86,6 +89,55 @@ jobs:
             ;;
         esac
 
+    # GitHub Packages is checked on its own: a version can be on RubyGems and still be
+    # missing here, and deciding the GPR push from the RubyGems lookup would never fill
+    # that gap.
+    #
+    # The versions endpoint returns a paginated JSON array whose `name` is the plain gem
+    # version (e.g. `0.4.2`), hence `--paginate`, `.[].name` and an exact whole-line match.
+    #
+    # Only a 404 counts as a confirmed absence: the package does not exist yet, so the
+    # next push is its first. A 404 would also come back if the owner were a user rather
+    # than an organisation, which errs in the same direction as a first push.
+    #
+    # Anything else (403, another status, a body the filter cannot read, a network error)
+    # is `unknown`, never `false`. A failed lookup must not read as absent, which is the
+    # rule #127 adopted for the tag and release lookups, but unlike those two this answer
+    # gates one optional step rather than the release itself. So the step does not exit
+    # non-zero: failing here fails the whole `check` job, which would skip the RubyGems
+    # push, the tag and the Release as well, none of which need GitHub Packages. Whether
+    # `GITHUB_TOKEN` can read this org-scoped endpoint at all is unverified, so that path
+    # must not be able to take a working release down with it. `unknown` pushes nothing,
+    # warns here, and fails loudly in the last step of `publish` instead.
+    - name: Check GitHub Packages for this version
+      id: gpr
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        VERSION: ${{ steps.version.outputs.version }}
+        OWNER: ${{ github.repository_owner }}
+      run: |
+        set +e
+        gh api --paginate "orgs/$OWNER/packages/rubygems/coelacanth/versions" \
+          --jq '.[].name' > gpr_versions.txt 2> gpr_err
+        rc=$?
+        set -e
+        if [ "$rc" -eq 0 ]; then
+          if grep -Fxq "$VERSION" gpr_versions.txt; then
+            echo "coelacanth $VERSION is already on GitHub Packages."
+            gpr_published=true
+          else
+            gpr_published=false
+          fi
+        elif grep -qi 'HTTP 404' gpr_err; then
+          echo "coelacanth has no package on GitHub Packages yet (first push there)."
+          gpr_published=false
+        else
+          echo "::warning::could not determine whether $VERSION is on GitHub Packages; nothing will be pushed there and the publish job will report it"
+          cat gpr_err
+          gpr_published=unknown
+        fi
+        echo "gpr_published=$gpr_published" >> "$GITHUB_OUTPUT"
+
     # A release is finished only when the gem is published *and* the tag and the GitHub
     # Release exist. Gating the whole job on publication state alone would strand a run
     # that pushed the gem but then failed at tagging: the next run would see the version
@@ -95,12 +147,17 @@ jobs:
     # whose source became the published gem is not knowable from here, and tagging the
     # current HEAD would point the tag at code that is not what is on RubyGems. That is
     # reported for a human instead of guessed at.
+    #
+    # `release_needed` covers the RubyGems push, the tag and the Release. `needed` also
+    # turns on when the GPR push is missing or its state could not be read. It only ever
+    # widens the old decision, so every state that worked before behaves the same.
     - name: Decide whether anything is left to do
       id: state
       env:
         GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         TAG: ${{ steps.version.outputs.tag }}
         PUBLISHED: ${{ steps.published.outputs.published }}
+        GPR_PUBLISHED: ${{ steps.gpr.outputs.gpr_published }}
       run: |
         # Only a confirmed absence counts as absent. A failed lookup must not read as
         # "missing": that would let the job proceed and, once the service recovered,
@@ -127,11 +184,19 @@ jobs:
           cat release_err
           exit 1
         fi
-        echo "published=$PUBLISHED tagged=$tagged released=$released"
+        echo "published=$PUBLISHED gpr_published=$GPR_PUBLISHED tagged=$tagged released=$released"
         if [ "$PUBLISHED" = true ] && [ "$tagged" = false ]; then
           echo "::warning::$TAG is on RubyGems but has no tag. The commit that produced the published gem cannot be determined here, so the tag is not created automatically. Create it by hand at that commit."
         fi
         if [ "$PUBLISHED" = false ] || { [ "$tagged" = true ] && [ "$released" = false ]; }; then
+          release_needed=true
+        else
+          release_needed=false
+        fi
+        echo "release_needed=$release_needed" >> "$GITHUB_OUTPUT"
+        # `unknown` also runs the job, so the GPR step can report the unreadable lookup
+        # instead of the run passing silently with nothing mirrored.
+        if [ "$release_needed" = true ] || [ "$GPR_PUBLISHED" != true ]; then
           echo "needed=true" >> "$GITHUB_OUTPUT"
         else
           echo "$TAG needs nothing this workflow can do."
@@ -142,9 +207,11 @@ jobs:
   # third-party gem code while holding a write-scoped checkout token, and never before the
   # RubyGems token is handed to a later step. The checkout here keeps no credentials.
   #
-  # Skipped during release recovery (the gem is already published, only the GitHub Release
-  # is missing): there is no publish left to gate, so a red suite must not block finishing
-  # that release.
+  # Skipped whenever the version is already on RubyGems, which covers both release recovery
+  # and a GitHub Packages catch-up. Neither publishes this commit's code: recovery only
+  # finishes a Release, and a catch-up mirrors the artifact RubyGems already serves. Those
+  # bytes were tested when the version was first released, so a red suite at the current
+  # HEAD must not block either one.
   test:
     name: Test before publish
     needs: check
@@ -170,14 +237,16 @@ jobs:
         bundle exec rspec
 
   # Two guards prevent double publishing:
-  # - the gem pushes below run only when `needs.check.outputs.published == 'false'`, so a
-  #   version already on RubyGems is never pushed again.
+  # - each gem push below runs only when its own host lacks the version: the RubyGems push
+  #   on `published == 'false'`, the GPR push on `gpr_published` not being `true`, which
+  #   pushes only on a confirmed `false` and reports an unreadable lookup.
   # - `concurrency: { group: gem-push, cancel-in-progress: false }` serialises runs, so the
   #   run started by the CHANGELOG commit queues behind the release and then sees the
   #   version as published.
   #
   # The job also runs when the gem is published and the tag exists but the GitHub Release
-  # is missing, so a run that failed at the Release step can finish on a re-run. A
+  # is missing, so a run that failed at the Release step can finish on a re-run, and when
+  # the gem is on RubyGems but missing from GitHub Packages, so that push can catch up. A
   # published version with no tag is not retried here: the `state` step warns, and a human
   # creates the tag at the commit that produced the gem, because that commit cannot be
   # established from a later run.
@@ -206,30 +275,12 @@ jobs:
       with:
         ruby-version: 3.4.3
 
-    # Each push treats "this version is already on this host" as success, so a re-run
-    # after a partial failure gets past the host that already has it. "Repushing of gem
-    # versions is not allowed" is deliberately NOT tolerated: RubyGems returns it for a
-    # yanked version too, and the versions API omits yanked versions, so swallowing it
-    # would turn a rejected push into a green release with no installable gem.
-    - name: Publish to GPR
-      if: needs.check.outputs.published == 'false'
-      run: |
-        mkdir -p $HOME/.gem
-        touch $HOME/.gem/credentials
-        chmod 0600 $HOME/.gem/credentials
-        printf -- "---\n:github: ${GEM_HOST_API_KEY}\n" > $HOME/.gem/credentials
-        gem build *.gemspec
-        if output=$(gem push --KEY github --host https://rubygems.pkg.github.com/${OWNER} *.gem 2>&1); then
-          printf '%s\n' "$output"
-        else
-          printf '%s\n' "$output"
-          printf '%s' "$output" | grep -qiE 'already been pushed|already exists' || exit 1
-          echo "::notice::this version is already published on this host; treating as success"
-        fi
-      env:
-        GEM_HOST_API_KEY: "Bearer ${{ secrets.GITHUB_TOKEN }}"
-        OWNER: ${{ github.repository_owner }}
-
+    # Treats "this version is already on this host" as success, so a re-run after a
+    # partial failure gets past the host that already has it. "Repushing of gem versions
+    # is not allowed" is deliberately NOT tolerated here: RubyGems returns it for a yanked
+    # version too, and the versions API omits yanked versions, so swallowing it would turn
+    # a rejected push into a green release with no installable gem. The GPR push, which
+    # does not read RubyGems to decide its own state, tolerates it; see that step.
     - name: Publish to RubyGems
       if: needs.check.outputs.published == 'false'
       run: |
@@ -265,8 +316,15 @@ jobs:
         fi
         gh api "repos/$GITHUB_REPOSITORY/git/refs" --method POST -f ref="refs/tags/$TAG" -f sha="$GITHUB_SHA"
 
+    # The changelog and the Release run only when the RubyGems push, the tag or the
+    # Release is still missing, never on a run that only pushes to GPR. This is required:
+    # release-action creates the tag itself when it is missing, so in the "on RubyGems
+    # but never tagged" state an unguarded GPR-only run would tag the current HEAD, not
+    # the commit that produced the published gem. It also keeps a GPR-only run from
+    # overwriting a good Release body with a regenerated one.
     - name: Generate CHANGELOG
       id: changelog
+      if: needs.check.outputs.release_needed == 'true'
       uses: requarks/changelog-action@v1
       with:
         token: ${{ secrets.GITHUB_TOKEN }}
@@ -279,8 +337,8 @@ jobs:
 
     # Only a run that published commits the changelog. A recovery run must not: the commit
     # lands on main, which starts another run, which would recover again and commit again.
-    # While the Release step kept failing that would never stop. Generation itself stays
-    # unguarded so a recovery run still has release notes to publish.
+    # While the Release step kept failing that would never stop. Generation itself is
+    # gated on `release_needed` only, so a recovery run still has release notes to publish.
     - name: Commit updated CHANGELOG.md
       if: needs.check.outputs.published == 'false'
       run: |
@@ -291,7 +349,9 @@ jobs:
         git push origin HEAD:main
       continue-on-error: true
 
+    # Gated on `release_needed`; see `Generate CHANGELOG` for why.
     - name: Update GitHub Release
+      if: needs.check.outputs.release_needed == 'true'
       uses: ncipollo/release-action@v1
       with:
         allowUpdates: true
@@ -299,3 +359,101 @@ jobs:
         name: ${{ needs.check.outputs.tag }}
         body: ${{ steps.changelog.outputs.changes }}
         token: ${{ secrets.GITHUB_TOKEN }}
+
+    # Deliberately the LAST step. GitHub Packages is the only host whose state this
+    # workflow cannot read from RubyGems, so this is the step most likely to fail, and
+    # nothing else depends on it. Everything above — the RubyGems push, the tag, the
+    # changelog and the Release — therefore completes even when this fails, and the next
+    # run retries the push because `gpr_published` is still not `true`.
+    #
+    # Putting it last also removes a hazard that the earlier position carried. A yanked
+    # version reads as `published=false`, because the versions API omits yanked versions.
+    # Running ahead of the RubyGems push, this step would build HEAD and put it on GPR
+    # under that burned version number, and only afterwards would the RubyGems push be
+    # rejected. Now the RubyGems push fails first and this step never runs.
+    #
+    # Nothing is built here, in either case:
+    #
+    # - This run published the version (`published == 'false'` in `check`): the gem the
+    #   RubyGems push built is still in the workspace and is reused. Rebuilding would not
+    #   reproduce it, because `spec.files` comes from `git ls-files` and the changelog
+    #   steps above stage `CHANGELOG.md`, which is untracked before them — so a rebuild
+    #   would carry a file the published gem does not have.
+    # - The version was already on RubyGems: `main` has moved on since, so building HEAD
+    #   would put different code on GPR under a version RubyGems already serves, and a
+    #   green suite at HEAD would not make it the released source. The artifact RubyGems
+    #   holds is fetched and its sha256 checked against the one the versions API reports
+    #   for the `ruby` platform, so both hosts serve identical bytes. A failed fetch or a
+    #   mismatch fails the step; there is no fallback to building HEAD.
+    #
+    # `gpr_published == 'unknown'` means the lookup in `check` could not answer. It is not
+    # treated as absent, so nothing is pushed, and the step fails here rather than in
+    # `check` so that one unreadable API does not take the rest of the release with it.
+    #
+    # Unlike the RubyGems push, this one tolerates "repushing of gem versions is not
+    # allowed". The reason that message is not tolerated for RubyGems is that it also
+    # means "yanked", which the RubyGems lookup cannot see; GPR's state is read from GPR
+    # itself, and the message there means GPR holds or reserves the version, so the push
+    # can never succeed and the goal is already met.
+    - name: Publish to GPR
+      if: needs.check.outputs.gpr_published != 'true'
+      run: |
+        if [ "$GPR_PUBLISHED" != false ]; then
+          echo "::error::could not determine whether $VERSION is on GitHub Packages, so it was not pushed. See the warning in the check job."
+          exit 1
+        fi
+        mkdir -p $HOME/.gem
+        touch $HOME/.gem/credentials
+        chmod 0600 $HOME/.gem/credentials
+        printf -- "---\n:github: ${GEM_HOST_API_KEY}\n" > $HOME/.gem/credentials
+        gem_file="coelacanth-$VERSION.gem"
+        if [ "$PUBLISHED" = false ]; then
+          if [ ! -f "$gem_file" ]; then
+            echo "::error::$gem_file is not in the workspace; the RubyGems push should have built it, and rebuilding here would not match what it published"
+            exit 1
+          fi
+          echo "Pushing the same artifact the RubyGems push built."
+        else
+          if ! status=$(curl -sSL -o "$gem_file" -w '%{http_code}' \
+            "https://rubygems.org/downloads/$gem_file"); then
+            echo "::error::could not reach RubyGems to download coelacanth $VERSION"
+            exit 1
+          fi
+          if [ "$status" != 200 ]; then
+            echo "::error::RubyGems does not serve coelacanth $VERSION (HTTP $status); refusing to build the package from HEAD"
+            exit 1
+          fi
+          # Kept separate from jq so a failed fetch does not surface as "no sha256".
+          if ! versions=$(curl -sS https://rubygems.org/api/v1/versions/coelacanth.json); then
+            echo "::error::could not reach the RubyGems versions API for coelacanth $VERSION"
+            exit 1
+          fi
+          # The platform is pinned because the download URL above is the `ruby` gem, and
+          # the API returns one entry per platform.
+          expected=$(printf '%s' "$versions" | jq -r --arg v "$VERSION" \
+            'map(select(.number == $v and .platform == "ruby")) | .[0].sha // empty')
+          if [ -z "$expected" ]; then
+            echo "::error::the RubyGems versions API reports no sha256 for coelacanth $VERSION on the ruby platform"
+            exit 1
+          fi
+          actual=$(sha256sum "$gem_file" | cut -d' ' -f1)
+          if [ "$actual" != "$expected" ]; then
+            echo "::error::the downloaded coelacanth $VERSION does not match the sha256 RubyGems reports"
+            exit 1
+          fi
+          echo "Mirroring the RubyGems artifact for $VERSION ($actual)."
+        fi
+        if output=$(gem push --KEY github --host https://rubygems.pkg.github.com/${OWNER} "$gem_file" 2>&1); then
+          printf '%s\n' "$output"
+        else
+          printf '%s\n' "$output"
+          printf '%s' "$output" \
+            | grep -qiE 'already been pushed|already exists|repushing of gem versions is not allowed' || exit 1
+          echo "::notice::this version is already published on this host; treating as success"
+        fi
+      env:
+        GEM_HOST_API_KEY: "Bearer ${{ secrets.GITHUB_TOKEN }}"
+        OWNER: ${{ github.repository_owner }}
+        GPR_PUBLISHED: ${{ needs.check.outputs.gpr_published }}
+        PUBLISHED: ${{ needs.check.outputs.published }}
+        VERSION: ${{ needs.check.outputs.version }}

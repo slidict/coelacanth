@@ -124,6 +124,12 @@ RSpec.describe "docker-entrypoint.sh" do
   it "is pinned to LF in .gitattributes" do
     # The byte check above passes on a Linux CI runner whatever the rule says, so
     # only this catches the rule going missing and breaking Windows checkouts.
-    expect(File.read(".gitattributes")).to match(/^\*\.sh +text +eol=lf$/)
+    #
+    # Normalised before matching: the rule covers `*.sh`, not `.gitattributes`
+    # itself, so on a Windows checkout this file carries CRLF and a `$`-anchored
+    # match would reject the very rule it is looking for.
+    rules = File.read(".gitattributes").gsub("\r\n", "\n")
+
+    expect(rules).to match(/^\*\.sh +text +eol=lf$/)
   end
 end
